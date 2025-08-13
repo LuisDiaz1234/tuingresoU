@@ -1,4 +1,5 @@
 import { cors, parseBody } from './_lib/supaClient.js';
+
 function deterministicAlgebra(){ return [
   {question:'Resuelve: 3x - 5 = 16', choices:['x=7','x=21','x=11/3','x=5'], answer_index:0},
   {question:'Factoriza: x^2 + 5x + 6', choices:['(x+2)(x+3)','(x+1)(x+6)','(x-2)(x-3)','(x+6)^2'], answer_index:0},
@@ -35,18 +36,21 @@ function deterministicLectura(){ return [
   {question:'"Según el texto" exige...', choices:['Opinión personal','Dato textual','Hipótesis creativa','Resumen libre'], answer_index:1},
   {question:'Onomatopeya es...', choices:['Imitación de sonidos','Figura de imagen','Tropo numérico','Metáfora visual'], answer_index:0},
 ];}
+
 export default async function handler(req, res){
   cors(res);
   if(req.method === 'OPTIONS'){ res.status(200).end(); return; }
   if(req.method !== 'POST'){ res.status(405).json({ok:false, error:'METHOD_NOT_ALLOWED'}); return; }
+
   const body = await parseBody(req);
   const topic = (body.topic||'').toString().toLowerCase().trim();
   const count = Math.min(10, Math.max(1, parseInt(body.count||10,10)));
+
   let pool = [];
   if(topic === 'algebra') pool = deterministicAlgebra();
   else if(topic === 'logico') pool = deterministicLogico();
   else if(topic === 'lectura') pool = deterministicLectura();
   else { res.status(400).json({ok:false, error:'INVALID_TOPIC'}); return; }
-  const questions = pool.slice(0, count);
-  res.status(200).json({ok:true, questions});
+
+  res.status(200).json({ok:true, questions: pool.slice(0, count)});
 }
