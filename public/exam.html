@@ -19,6 +19,7 @@
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     @media(max-width:900px){.grid2{grid-template-columns:1fr}}
     .btn{display:inline-block;background:var(--brand);color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+    .btn.sec{background:#10b981}
     .btn:disabled{background:#cbd5e1;cursor:not-allowed}
     .input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:12px}
     .label{display:block;font-size:13px;color:var(--muted);margin:8px 0 6px}
@@ -27,6 +28,8 @@
     .timer{font-weight:800}
     .q{margin:10px 0 18px}
     .ok{color:var(--ok)} .err{color:var(--err)}
+    .chip{display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:6px 10px;margin:4px 6px 0 0;cursor:pointer}
+    .chip:hover{background:#e2e8f0}
   </style>
 </head>
 <body>
@@ -41,51 +44,55 @@
 
 <div class="container">
 
+  <!-- PRESSETS -->
   <div class="card">
-    <h2 style="margin:0 0 10px 0">Simulador de Examen</h2>
+    <h2 style="margin:0 0 10px 0">Simuladores oficiales</h2>
+    <div class="muted" style="margin-bottom:8px">Elige un preset y comenzamos de una vez. Los bancos salen de la base de datos.</div>
+    <div>
+      <span class="chip" onclick="startPreset('paa')">PAA (UTP) – 2 secciones, 60+60 min</span>
+      <span class="chip" onclick="startPreset('pca')">PCA (UP) – 2 secciones, 120 min</span>
+      <span class="chip" onclick="startPreset('pcg')">PCG (UP) – 4 secciones, 120 min</span>
+    </div>
+  </div>
+
+  <!-- PERSONALIZADO -->
+  <div class="card">
+    <h2 style="margin:0 0 10px 0">Examen personalizado</h2>
     <div class="grid2">
       <div>
         <label class="label">Dificultad</label>
         <select id="difficulty">
-          <option value="mixed">Mixta (recomendada)</option>
           <option value="basic">Básica</option>
-          <option value="medium">Media</option>
+          <option value="medium" selected>Media</option>
           <option value="hard">Difícil</option>
         </select>
-
         <label class="label">Preguntas por sección</label>
         <input id="count" class="input" type="number" min="5" max="30" value="10"/>
-
         <div style="margin-top:10px">
           <button id="btnGen" class="btn">Generar examen</button>
         </div>
-
-        <!-- Banner de calidad/estado -->
-        <p id="genMsg" class="muted" style="margin:10px 0 0">
-          Secciones: Álgebra, Razonamiento Lógico y Comprensión Lectora.
+        <p id="msg" class="muted" style="margin:10px 0 0">
+          Secciones (personalizado): Álgebra, Razonamiento Lógico y Comprensión Lectora.
         </p>
       </div>
-
       <div>
-        <div>Tiempo límite: <span id="limit" class="badge">30:00</span></div>
+        <div>Tiempo total: <span id="limit" class="badge">30:00</span></div>
         <div>Tiempo restante: <span id="timer" class="timer">—</span></div>
         <div class="muted mono" id="seed"></div>
       </div>
     </div>
   </div>
 
-  <div id="wrap" class="card">Genera el examen para comenzar.</div>
+  <div id="wrap" class="card">Elige un preset o genera un examen personalizado.</div>
 
 </div>
 
 <script>
-/* Utilidades */
-let EXAM = null, START = 0, TICK = null;
+let EXAM=null, START=0, TICK=null;
 function fmt(sec){ const m=Math.floor(sec/60), s=sec%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
 
-/* Render del examen */
 function renderExam(){
-  if(!EXAM){ document.getElementById('wrap').textContent='Genera el examen para comenzar.'; return; }
+  if(!EXAM){ document.getElementById('wrap').textContent='Elige un preset o genera un examen.'; return; }
   const blocks = EXAM.sections.map((sec,si)=>{
     const qs = sec.items.map((q,qi)=>{
       const opts = q.choices.map((c,ci)=>(
@@ -96,11 +103,10 @@ function renderExam(){
     return `<h3 style="margin:12px 0">${sec.title} <span class="badge">${sec.items.length} preguntas</span></h3>${qs}`;
   }).join('');
   document.getElementById('wrap').innerHTML =
-    blocks + `<button id="btnSend" class="btn">Enviar examen</button> <span id="msg" class="muted"></span>`;
+    blocks + `<button id="btnSend" class="btn sec">Enviar examen</button> <span id="msg2" class="muted"></span>`;
   document.getElementById('btnSend').onclick = grade;
 }
 
-/* Timer */
 function startTimer(){
   const limit = EXAM.time_limit_seconds || 1800;
   document.getElementById('limit').textContent = fmt(limit);
@@ -114,7 +120,6 @@ function startTimer(){
   }, 1000);
 }
 
-/* Calificar y mostrar resultados */
 async function grade(){
   if(!EXAM) return;
   clearInterval(TICK);
@@ -150,7 +155,6 @@ async function grade(){
     }).join('');
   document.getElementById('wrap').innerHTML = body;
 
-  // Guarda score (no bloquea)
   try{
     const email = localStorage.getItem('ingresou_email')||'';
     const code  = localStorage.getItem('ingresou_key')||'';
@@ -162,51 +166,30 @@ async function grade(){
   }catch(_){}
 }
 
-/* Generar examen (pide calidad STRICT y dificultad HARD por defecto) */
-async function generate(params){
-  const btn = document.getElementById('btnGen');
-  const msg = document.getElementById('genMsg');
-  if(btn){ btn.disabled = true; btn.textContent = 'Generando...'; msg.textContent = 'Generando…'; }
+/* --------- GENERADORES --------- */
 
-  const count = Math.max(5, Math.min(30, parseInt((params?.count ?? document.getElementById('count').value)||10,10)));
-  const uiDiff = (params?.difficulty ?? document.getElementById('difficulty').value); // lo que selecciona el usuario
-  // Si el usuario elige "mixta", forzamos hard (mejor calidad). Si elige otra, la respetamos.
-  const difficulty = (uiDiff==='mixed' ? 'hard' : uiDiff);
-  const variant = (params?.variant ?? Date.now()%1e6);
-  const time = parseInt(params?.time ?? 1800,10);
+// EXAM PRESETS (DB-ONLY)
+async function startPreset(mode){
+  const btn = document.getElementById('btnGen');
+  const msg = document.getElementById('msg');
+  if(btn){ btn.disabled = true; btn.textContent = 'Generando...'; }
+  msg.textContent = 'Creando simulacro...';
 
   try{
     const r = await fetch('/api/generate-exam', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        count_per_section: count,
-        difficulty,                 // -> 'hard' si venía 'mixed'
-        variant,
-        time_limit_seconds: time,
-        quality: 'strict'           // pedimos IA estricta en el ensamblador
-      })
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ mode, source:'db_only' })
     });
     const d = await r.json();
-
     if(d.ok){
       EXAM = d.exam;
-      // Meta de calidad
-      const ratio = (d.meta && typeof d.meta.ai_ratio==='number') ? d.meta.ai_ratio : 0;
-      if(ratio >= 0.5){
-        msg.innerHTML = `Calidad: <strong>IA</strong> (${Math.round(ratio*100)}% IA)`;
-      }else{
-        // esto indica que se usó bastante fallback (sin IA)
-        msg.innerHTML = `Calidad: <strong>Básico</strong> (bajo % de IA). Si puedes, reintenta en 30–60s.`;
-      }
-
-      document.getElementById('seed').textContent = 'seed='+EXAM.seed+' · dificultad='+EXAM.difficulty;
+      document.getElementById('seed').textContent = `Simulador: ${mode.toUpperCase()} · secciones=${EXAM.sections.length}`;
       document.getElementById('limit').textContent = fmt(EXAM.time_limit_seconds||1800);
-      renderExam();
-      startTimer();
+      renderExam(); startTimer();
+      msg.textContent = `Examen ${mode.toUpperCase()} listo. ¡Éxitos!`;
     }else{
-      document.getElementById('wrap').textContent='No se pudo generar el examen. Intenta de nuevo.';
-      msg.textContent = d.error ? ('Error: '+d.error) : 'No se pudo generar.';
+      document.getElementById('wrap').textContent='No hay suficientes preguntas en la base. Agrega más en Admin.';
+      msg.textContent = d.error || 'Sin banco suficiente.';
     }
   }catch(e){
     document.getElementById('wrap').textContent='Error de red.';
@@ -216,25 +199,54 @@ async function generate(params){
   }
 }
 
-/* Botón manual */
-document.getElementById('btnGen').onclick = ()=>generate();
+// PERSONALIZADO (temas genéricos)
+async function generate(){
+  const btn = document.getElementById('btnGen');
+  const msg = document.getElementById('msg');
+  if(btn){ btn.disabled = true; btn.textContent = 'Generando...'; }
+  msg.textContent = 'Creando examen...';
 
-/* AUTOSTART por query: ?autostart=1&count=10&difficulty=mixed&time=1800&variant=123 */
+  const count = Math.max(5, Math.min(30, parseInt(document.getElementById('count').value||10,10)));
+  const difficulty = document.getElementById('difficulty').value;
+  const variant = Date.now()%1e6;
+  const time = 30*60;
+
+  try{
+    const r = await fetch('/api/generate-exam', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        count_per_section: count,
+        difficulty,
+        variant,
+        time_limit_seconds: time
+      })
+    });
+    const d = await r.json();
+    if(d.ok){
+      EXAM = d.exam;
+      document.getElementById('seed').textContent = `Personalizado · dificultad=${difficulty}`;
+      document.getElementById('limit').textContent = fmt(EXAM.time_limit_seconds||1800);
+      renderExam(); startTimer();
+      msg.textContent = 'Examen listo.';
+    }else{
+      document.getElementById('wrap').textContent='No se pudo generar el examen.';
+      msg.textContent = d.error || 'Sin datos.';
+    }
+  }catch(e){
+    document.getElementById('wrap').textContent='Error de red.';
+    msg.textContent = 'Error de red.';
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Generar examen'; }
+  }
+}
+
+document.getElementById('btnGen').onclick = generate;
+
+// AUTOSTART (si quisieras lanzar con /exam.html?mode=paa)
 (function(){
   const qs = new URLSearchParams(location.search);
-  if(qs.get('autostart')==='1'){
-    const p = {
-      count: parseInt(qs.get('count')||'10',10),
-      difficulty: (qs.get('difficulty')||'mixed'),
-      time: parseInt(qs.get('time')||'1800',10),
-      variant: parseInt(qs.get('variant')|| (Date.now()%1e6),10)
-    };
-    // reflejar en UI
-    document.getElementById('count').value = p.count;
-    document.getElementById('difficulty').value = p.difficulty;
-    document.getElementById('limit').textContent = (p.time/60)+':00';
-    generate(p);
-  }
+  const mode = qs.get('mode');
+  if(mode) startPreset(mode);
 })();
 </script>
 </body>
