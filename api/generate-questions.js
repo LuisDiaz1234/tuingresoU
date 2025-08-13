@@ -1,18 +1,16 @@
 // /api/generate-questions.js
 import { cors, parseBody, getClient } from './_lib/supaClient.js';
+import OpenAI from 'openai';
 
-// ------- Config ----------
 const ALLOWED_TOPICS = ['algebra','logico','lectura'];
 const DEFAULT_COUNT = 10;
 const MAX_COUNT = 30;
 
-// IA
-import OpenAI from 'openai';
+// ENV
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const OPENAI_MODEL   = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || null;
 
-// --------- Utiles ----------
 function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
@@ -51,7 +49,7 @@ function makeFallback(topic, n=10){
   return items;
 }
 
-// Validación mínima del esquema
+// Validación de esquema mínimo
 function validateQuestions(items){
   if(!Array.isArray(items)) return [];
   const out=[];
@@ -68,14 +66,16 @@ function validateQuestions(items){
   return out;
 }
 
-// Llamada a OpenAI con JSON estricto
-async function aiGenerate({topic, count}){
+async function aiGenerate({topic, count, variant, difficulty}){
   if(!OPENAI_API_KEY) return { ok:false, reason:'NO_API_KEY' };
 
   const client = new OpenAI({
     apiKey: OPENAI_API_KEY,
     ...(OPENAI_BASE_URL ? { baseURL: OPENAI_BASE_URL } : {})
   });
+
+  // Semilla variable: si no viene, deriva de tiempo (minuto actual) + un aleatorio
+  const seed = Number.isInteger(variant) ? variant : (Math.floor(Date.now()/60000) ^ Math.floor(Math.random()*1e9));
 
   const schema = {
     type: "object",
@@ -86,7 +86,7 @@ async function aiGenerate({topic, count}){
           type: "object",
           properties: {
             prompt: { type: "string" },
-            choices: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 6 },
+            choices: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 5 },
             answer_index: { type: "integer" },
             explanation: { type: "string" }
           },
@@ -98,26 +98,24 @@ async function aiGenerate({topic, count}){
     additionalProperties: false
   };
 
-  const system = `Eres un generador de ítems tipo opción múltiple para un simulador de ingreso universitario en Panamá (UTP y UP).
-- Produce preguntas en español, claras y sin ambigüedad.
-- Cada pregunta debe tener de 3 a 5 alternativas, con EXACTAMENTE una correcta.
-- Devuelve SOLO JSON con el esquema indicado. Nada de texto fuera del JSON.
-- Incluye explicación pedagógica breve y correcta (campo "explanation").
-- Temas válidos: algebra, logico, lectura.`;
+  const system = `Eres un generador de ítems de opción múltiple para un simulador de ingreso universitario en Panamá (UTP/UP).
+- Español claro y sin ambigüedad.
+- 3–5 opciones, exactamente 1 correcta.
+- Devuelve SOLO JSON con el esquema pedido.
+- Incluye breve "explanation" pedagógica.
+- Temas: algebra, logico, lectura.`;
 
-  const user = `Genera ${count} preguntas para el tema "${topic}".
+  const user = `Genera ${count} preguntas para el tema "${topic}"${difficulty?` con dificultad ${difficulty}`:''}.
 Requisitos:
-- Dificultad mixta (básica-media-alta).
-- Formato seguro (no cifras astronómicas ni prompts peligrosos).
-- Evita copiar texto con copyright; crea tus propios enunciados.
-- Ajuste al estilo de examen de admisión (razonamiento y conceptos concretos).
+- Mezcla de tipos de pregunta y números razonables.
+- Estilo examen de admisión (razonamiento y conceptos).
+- Sin texto con copyright; crea enunciados originales.
 Devuelve {"items":[...]} cumpliendo el esquema.`;
 
-  // Modo JSON estricto
-  const response = await client.chat.completions.create({
+  const resp = await client.chat.completions.create({
     model: OPENAI_MODEL,
     temperature: 0.6,
-    seed: 42,
+    seed,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: system },
@@ -125,13 +123,11 @@ Devuelve {"items":[...]} cumpliendo el esquema.`;
     ]
   });
 
-  const txt = response.choices?.[0]?.message?.content || '';
-  let parsed=null;
-  try{ parsed = JSON.parse(txt); }catch{ return { ok:false, reason:'BAD_JSON' }; }
-
+  const txt = resp.choices?.[0]?.message?.content || '';
+  let parsed=null; try{ parsed = JSON.parse(txt); }catch{ return { ok:false, reason:'BAD_JSON' }; }
   const vetted = validateQuestions(parsed.items).slice(0, count);
   if(vetted.length===0) return { ok:false, reason:'EMPTY' };
-  return { ok:true, items:vetted };
+  return { ok:true, items:vetted, seed };
 }
 
 export default async function handler(req, res){
@@ -142,49 +138,64 @@ export default async function handler(req, res){
   try{
     const b = await parseBody(req);
     const topic = (b.topic||'').toString().trim();
-    let count = clamp(parseInt(b.count||DEFAULT_COUNT,10)||DEFAULT_COUNT, 1, MAX_COUNT);
+    const difficulty = (b.difficulty||'').toString().trim() || null;
+    const debug = !!b.debug;
+    const variant = Number.isInteger(b.variant) ? b.variant : null;
 
+    let count = clamp(parseInt(b.count||DEFAULT_COUNT,10)||DEFAULT_COUNT, 1, MAX_COUNT);
     if(!ALLOWED_TOPICS.includes(topic)){
       return res.status(400).json({ok:false, error:'INVALID_TOPIC'});
     }
 
-    // 1) Intentar IA
-    let iaItems = [];
-    try{
-      const ai = await aiGenerate({topic, count});
-      if(ai.ok) iaItems = ai.items;
-    }catch(_e){ /* ignora y cae a DB/fallback */ }
+    let items = [];
+    let meta = { from_ai:0, from_db:0, from_fallback:0, reason:null };
 
-    // 2) Intentar DB (si existe y faltan)
-    const supa = getClient();
-    let dbItems = [];
+    // 1) IA
     try{
-      const { data } = await supa
-        .from('questions')
-        .select('id,prompt,choices,answer_index,explanation')
-        .eq('topic', topic).eq('active', true)
-        .order('created_at',{ascending:false})
-        .limit(100);
+      const ai = await aiGenerate({topic, count, variant, difficulty});
+      if(ai.ok){ items = ai.items; meta.from_ai = items.length; meta.seed = ai.seed; }
+      else { meta.reason = ai.reason || meta.reason; }
+    }catch(e){ meta.reason = 'AI_EXCEPTION'; }
 
-      if(Array.isArray(data) && data.length){
-        dbItems = shuffle(data.slice());
+    // 2) DB (solo si faltan)
+    try{
+      if(items.length < count){
+        const supa = getClient();
+        const selCols = 'id,prompt,choices,answer_index,explanation'; // si no existe 'explanation', Supabase lanzará error
+        const { data } = await supa
+          .from('questions')
+          .select(selCols)
+          .eq('topic', topic)
+          .eq('active', true)
+          .order('created_at',{ascending:false})
+          .limit(100);
+
+        if(Array.isArray(data) && data.length){
+          const db = shuffle(data.slice());
+          for(const q of db){
+            if(items.length>=count) break;
+            items.push(q);
+            meta.from_db++;
+          }
+        }
       }
-    }catch(_e){ /* no bloquear */ }
-
-    // 3) Mezclar IA+DB y completar con fallback
-    let mix = [...iaItems];
-    for(const q of dbItems){
-      if(mix.length>=count) break;
-      mix.push(q);
+    }catch(_e){
+      // No bloquees la respuesta si la tabla difiere (p.ej., falta columna explanation)
+      // Continuaremos con fallback
     }
-    if(mix.length<count){
-      mix = mix.concat(makeFallback(topic, count - mix.length));
+
+    // 3) Fallback si aún faltan
+    if(items.length < count){
+      const miss = count - items.length;
+      items = items.concat( makeFallback(topic, miss) );
+      meta.from_fallback = miss;
     }else{
-      mix = mix.slice(0, count);
+      items = items.slice(0, count);
     }
 
-    return res.status(200).json({ok:true, items: mix});
+    if(debug) return res.status(200).json({ok:true, items, meta});
+    return res.status(200).json({ok:true, items});
   }catch(e){
-    return res.status(500).json({ok:false, error:'SERVER_ERROR', detail:e.message});
+    return res.status(200).json({ok:true, items: makeFallback('algebra', DEFAULT_COUNT), meta:{from_ai:0,from_db:0,from_fallback:DEFAULT_COUNT,reason:'HARD_FALLBACK',detail:e.message} });
   }
 }
