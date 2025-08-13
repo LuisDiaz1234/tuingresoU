@@ -1,5 +1,6 @@
-import { cors, parseBody } from './_lib/supaClient.js';
+import { getClient, cors, parseBody } from './_lib/supaClient.js';
 
+// Plantillas determinísticas (fallback)
 function deterministicAlgebra(){ return [
   {question:'Resuelve: 3x - 5 = 16', choices:['x=7','x=21','x=11/3','x=5'], answer_index:0},
   {question:'Factoriza: x^2 + 5x + 6', choices:['(x+2)(x+3)','(x+1)(x+6)','(x-2)(x-3)','(x+6)^2'], answer_index:0},
@@ -37,6 +38,9 @@ function deterministicLectura(){ return [
   {question:'Onomatopeya es...', choices:['Imitación de sonidos','Figura de imagen','Tropo numérico','Metáfora visual'], answer_index:0},
 ];}
 
+// util
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
 export default async function handler(req, res){
   cors(res);
   if(req.method === 'OPTIONS'){ res.status(200).end(); return; }
@@ -45,12 +49,39 @@ export default async function handler(req, res){
   const body = await parseBody(req);
   const topic = (body.topic||'').toString().toLowerCase().trim();
   const count = Math.min(10, Math.max(1, parseInt(body.count||10,10)));
+  if(!['algebra','logico','lectura'].includes(topic)){
+    res.status(400).json({ok:false, error:'INVALID_TOPIC'}); return;
+  }
 
   let pool = [];
-  if(topic === 'algebra') pool = deterministicAlgebra();
-  else if(topic === 'logico') pool = deterministicLogico();
-  else if(topic === 'lectura') pool = deterministicLectura();
-  else { res.status(400).json({ok:false, error:'INVALID_TOPIC'}); return; }
+  try{
+    const supa = getClient();
+    // Trae hasta 1000 activas por tema y baraja en servidor (lo barajamos en Node)
+    const { data, error } = await supa
+      .from('questions')
+      .select('prompt, choices, answer_index')
+      .eq('topic', topic)
+      .eq('active', true)
+      .limit(1000);
+    if(error) throw error;
+    if(Array.isArray(data)){
+      pool = data
+        .map(q => ({question: q.prompt, choices: q.choices, answer_index: q.answer_index}))
+        .filter(q => Array.isArray(q.choices) && Number.isInteger(q.answer_index));
+    }
+  }catch(e){
+    // silencioso: fallback si falla DB
+    pool = [];
+  }
 
-  res.status(200).json({ok:true, questions: pool.slice(0, count)});
+  if(pool.length < count){
+    const fallback =
+      topic === 'algebra' ? deterministicAlgebra() :
+      topic === 'logico' ? deterministicLogico() :
+      deterministicLectura();
+    pool = pool.concat(fallback);
+  }
+
+  const questions = shuffle(pool).slice(0, count);
+  res.status(200).json({ok:true, questions});
 }
