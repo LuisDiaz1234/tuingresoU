@@ -1,6 +1,17 @@
 <!doctype html>
 <html lang="es">
 <head>
+  <script>
+  (function(){
+    const email = localStorage.getItem('ingresou_email');
+    const code  = localStorage.getItem('ingresou_key');
+    if(!email || !code){
+      // Te regreso al inicio y guardo a dónde querías ir
+      location.href = '/index.html?next=' + encodeURIComponent(location.pathname + location.search);
+    }
+  })();
+</script>
+
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>IngresoU – Examen</title>
