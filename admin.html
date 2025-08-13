@@ -7,6 +7,8 @@
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:1100px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
     header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    nav a{margin-right:12px;color:#334155;text-decoration:none;font-weight:600}
+    nav a:hover{color:#0ea5e9}
     .tabs{display:flex;gap:12px;margin-bottom:12px}
     .tabs button{padding:8px 12px;border:1px solid #cbd5e1;background:#fff;border-radius:8px;cursor:pointer}
     .tabs button.active{background:#0ea5e9;color:#fff;border-color:#0ea5e9}
@@ -18,7 +20,6 @@
     button:disabled{background:#94a3b8;cursor:not-allowed}
     .muted{color:#475569}
     .ok{color:#059669}.err{color:#dc2626}
-    nav a{margin-right:12px}
     table{width:100%;border-collapse:collapse}
     th,td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
     small.code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:2px 6px}
@@ -85,7 +86,12 @@
       <div>
         <input type="hidden" id="q_id">
         <label>Tema</label>
-        <select id="q_topic"><option value="algebra">Álgebra</option><option value="logico">Razonamiento Lógico</option><option value="lectura">Comprensión Lectora</option></select>
+        <select id="q_topic">
+          <option value="algebra">Álgebra</option>
+          <option value="logico">Razonamiento Lógico</option>
+          <option value="lectura">Comprensión Lectora</option>
+        </select>
+
         <label>Pregunta</label>
         <textarea id="q_prompt" placeholder="Escribe la pregunta..."></textarea>
 
@@ -98,6 +104,10 @@
 
         <label>Dificultad (opcional)</label>
         <input id="q_difficulty" placeholder="facil / media / dificil">
+
+        <label>Explicación (opcional)</label>
+        <textarea id="q_explanation" placeholder="Explica brevemente por qué la respuesta es correcta."></textarea>
+
         <div class="row">
           <label><input id="q_active" type="checkbox" checked> Activa</label>
           <button id="btnSaveQuestion" type="button">Guardar pregunta</button>
@@ -168,7 +178,7 @@ document.querySelectorAll('.tabs button').forEach(b=>{
   });
 });
 
-/* ===== KEYS (mantenemos lo que ya tenías) ===== */
+/* ===== KEYS ===== */
 document.getElementById('btnIssue').addEventListener('click', async ()=>{
   const btn = document.getElementById('btnIssue');
   const headers = authHeaders(); if(!headers){ return; }
@@ -214,7 +224,7 @@ document.getElementById('btnList').addEventListener('click', async ()=>{
   }finally{ setBusy(btn,false,'Listar'); }
 });
 
-/* ===== QUESTIONS (igual a versión previa) ===== */
+/* ===== QUESTIONS ===== */
 const choicesWrap = document.getElementById('choices');
 function addChoice(val=''){
   const i = choicesWrap.querySelectorAll('input.choice').length;
@@ -236,6 +246,7 @@ document.getElementById('btnSaveQuestion').addEventListener('click', async ()=>{
   const choices = Array.from(document.querySelectorAll('input.choice')).map(i=>i.value.trim()).filter(Boolean);
   const answer_index = parseInt(document.getElementById('q_answer_index').value,10) || 0;
   const difficulty = (document.getElementById('q_difficulty').value||'').trim() || null;
+  const explanation = (document.getElementById('q_explanation').value||'').trim() || null;
   const active = document.getElementById('q_active').checked;
 
   if(!prompt || choices.length<2 || choices.length>6 || answer_index<0 || answer_index>=choices.length){
@@ -245,7 +256,7 @@ document.getElementById('btnSaveQuestion').addEventListener('click', async ()=>{
   try{
     setBusy(btn,true,'Guardar pregunta','Guardando...');
     const res = await fetch('/api/admin/questions-upsert', {
-      method: id ? 'PUT':'POST', headers, body: JSON.stringify({ id, topic, prompt, choices, answer_index, difficulty, active })
+      method: id ? 'PUT':'POST', headers, body: JSON.stringify({ id, topic, prompt, choices, answer_index, difficulty, active, explanation })
     });
     const data = await res.json();
     document.getElementById('q_status').innerHTML = data.ok ? '<span class="ok">Guardado. ID: '+data.id+'</span>' : '<span class="err">'+(data.error||'Error')+'</span>';
@@ -291,6 +302,7 @@ document.getElementById('btnListQ').addEventListener('click', async ()=>{
         choicesWrap.innerHTML=''; item.choices.forEach(c=>addChoice(c));
         document.getElementById('q_answer_index').value = item.answer_index;
         document.getElementById('q_difficulty').value = item.difficulty||'';
+        document.getElementById('q_explanation').value = item.explanation||'';
         document.getElementById('q_active').checked = !!item.active;
         window.scrollTo({top:0,behavior:'smooth'});
       });
