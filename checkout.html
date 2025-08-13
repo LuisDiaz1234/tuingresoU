@@ -1,0 +1,92 @@
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>IngresoU – Pago con Yappy</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:900px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
+label{display:block;margin:8px 0 4px}
+input,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px}
+button{padding:10px 14px;border:0;border-radius:10px;background:#0ea5e9;color:#fff;font-weight:600;cursor:pointer}
+button:disabled{background:#94a3b8;cursor:not-allowed}
+.muted{color:#475569}.ok{color:#059669}.err{color:#dc2626}.row{display:flex;gap:8px;align-items:center;margin-top:6px}
+img.proof{max-width:100%;border:1px solid #e2e8f0;border-radius:8px}
+nav a{margin-right:12px}
+</style></head><body>
+<header><h1>IngresoU</h1><nav>
+<a href="/index.html">Inicio</a><a href="/premium.html">Premium</a><a href="/leaderboard.html">Ranking</a>
+</nav></header>
+
+<div class="card"><h2>Comprar Premium (Yappy)</h2>
+<p class="muted">Completa tus datos, paga por Yappy y sube tu comprobante. Validamos y activamos tu cuenta automáticamente.</p></div>
+
+<div class="card" id="step1">
+<h3>Paso 1 · Tus datos</h3>
+<label>Nombre</label><input id="name" placeholder="Tu nombre">
+<label>Correo</label><input id="email" type="email" placeholder="tu@correo.com">
+<label>Universidad</label><select id="university"><option>UTP</option><option>UP</option></select>
+<label>Plan</label><select id="plan"><option value="mensual">Mensual</option><option value="trimestral">Trimestral</option><option value="anual">Anual</option></select>
+<div class="row"><button id="btnCreate">Continuar</button><span id="s1" class="muted"></span></div></div>
+
+<div class="card" id="step2" style="display:none">
+<h3>Paso 2 · Paga por Yappy</h3>
+<div id="payInfo" class="muted">Cargando…</div><div id="qrWrap" style="margin:10px 0"></div>
+<label>Referencia de Yappy (opcional)</label><input id="reference" placeholder="Ej: Ref 123456">
+<label>Sube tu comprobante (captura)</label><input id="proof" type="file" accept="image/*"><img id="preview" class="proof" alt="" style="display:none;margin-top:8px">
+<div class="row"><button id="btnUpload">Enviar comprobante</button><span id="s2" class="muted"></span></div></div>
+
+<div class="card" id="step3" style="display:none"><h3>Paso 3 · En revisión</h3>
+<p class="muted">¡Listo! Presiona “Actualizar estado” para ver cuando quede activo.</p>
+<div class="row"><button id="btnStatus">Actualizar estado</button><span id="s3" class="muted"></span></div></div>
+
+<script>
+let REQUEST_ID=null, REQ_EMAIL=''; function toMoney(c,curr){return `${(c/100).toFixed(2)} ${curr}`;}
+document.getElementById('btnCreate').addEventListener('click', async ()=>{
+  const name=document.getElementById('name').value.trim();
+  const email=document.getElementById('email').value.trim();
+  const university=document.getElementById('university').value;
+  const plan=document.getElementById('plan').value; const s1=document.getElementById('s1');
+  if(!email){s1.innerHTML='<span class="err">Ingresa tu correo.</span>';return;}
+  try{
+    s1.textContent='Creando solicitud...';
+    const r=await fetch('/api/yappy/create-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,university,plan})});
+    const d=await r.json(); if(!d.ok) throw new Error(d.error||'Error');
+    REQUEST_ID=d.request_id; REQ_EMAIL=email;
+    const p=toMoney(d.amount_cents,d.currency);
+    let html=`Monto: <strong>${p}</strong><br>`;
+    if(d.yappy.display_name) html+=`Destinatario: <strong>${d.yappy.display_name}</strong><br>`;
+    if(d.yappy.phone) html+=`Teléfono: <strong>${d.yappy.phone}</strong><br>`;
+    if(d.yappy.link) html+=`Link: <a href="${d.yappy.link}" target="_blank">${d.yappy.link}</a><br>`;
+    document.getElementById('payInfo').innerHTML=html;
+    if(d.yappy.qr_url){document.getElementById('qrWrap').innerHTML=`<img src="${d.yappy.qr_url}" alt="QR Yappy" style="max-width:260px;border:1px solid #e2e8f0;border-radius:12px">`;}
+    document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='';
+  }catch(e){ s1.innerHTML='<span class="err">'+e.message+'</span>'; }
+});
+document.getElementById('proof').addEventListener('change',(ev)=>{
+  const f=ev.target.files[0]; if(!f) return; const rd=new FileReader();
+  rd.onload=function(){const img=document.getElementById('preview'); img.src=rd.result; img.style.display='';}; rd.readAsDataURL(f);
+});
+document.getElementById('btnUpload').addEventListener('click', async ()=>{
+  const s2=document.getElementById('s2'); const ref=(document.getElementById('reference').value||'').trim();
+  const img=document.getElementById('preview').src||''; if(!REQUEST_ID){s2.innerHTML='<span class="err">Primero crea la solicitud.</span>';return;}
+  try{
+    s2.textContent='Enviando...';
+    const r=await fetch('/api/yappy/upload-proof',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_id:REQUEST_ID,reference:ref,proof_data_url:img})});
+    const d=await r.json(); if(!d.ok) throw new Error(d.error||'Error');
+    s2.innerHTML='<span class="ok">Recibido. ¡Gracias!</span>'; document.getElementById('step2').style.display='none'; document.getElementById('step3').style.display='';
+  }catch(e){ s2.innerHTML='<span class="err">'+e.message+'</span>'; }
+});
+async function checkStatus(){
+  const s3=document.getElementById('s3'); if(!REQUEST_ID){s3.innerHTML='<span class="err">No hay solicitud.</span>';return;}
+  try{
+    s3.textContent='Consultando...'; const r=await fetch('/api/yappy/status?request_id='+encodeURIComponent(REQUEST_ID));
+    const d=await r.json(); if(!d.ok) throw new Error(d.error||'Error');
+    if(d.status==='approved' && d.issued_code){
+      localStorage.setItem('ingresou_email', d.email||REQ_EMAIL); localStorage.setItem('ingresou_key', d.issued_code);
+      s3.innerHTML='<span class="ok">Pago aprobado. Activando...</span>'; setTimeout(()=>location.href='/premium.html', 800);
+    }else if(d.status==='rejected'){ s3.innerHTML='<span class="err">Pago rechazado.</span>'; }
+    else { s3.textContent='Aún pendiente. Vuelve a consultar en unos minutos.'; }
+  }catch(e){ s3.innerHTML='<span class="err">'+e.message+'</span>'; }
+}
+document.getElementById('btnStatus').addEventListener('click', checkStatus);
+</script></body></html>
