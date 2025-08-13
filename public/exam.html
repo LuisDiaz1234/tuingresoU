@@ -260,6 +260,54 @@ document.getElementById('btnGen').onclick = generate;
   if(mode) startPreset(mode);
 })();
 </script>
+  <script>
+(function(){
+  // Convierte radios + texto suelto en <label class="opt"> … ✓
+  function enhanceRadios(root=document){
+    const radios = root.querySelectorAll('.opts input[type=radio]');
+    radios.forEach(r=>{
+      if(r.dataset.upgraded) return;
+      r.dataset.upgraded = '1';
+
+      if(r.closest('label.opt')) return; // ya está envuelto
+
+      // Leer texto que está después del radio (si tu renderer lo pone así)
+      let txt = '';
+      if(r.nextSibling){
+        txt = (r.nextSibling.textContent || r.nextSibling.nodeValue || '').trim();
+      }
+      // Si era nodo de texto, lo removemos para evitar duplicado
+      if(r.nextSibling && r.nextSibling.nodeType === Node.TEXT_NODE){
+        r.parentNode.removeChild(r.nextSibling);
+      }
+
+      const label = document.createElement('label');
+      label.className = 'opt';
+
+      const span = document.createElement('span');
+      span.className = 'txt';
+      span.textContent = txt || r.getAttribute('data-text') || 'Opción';
+
+      const tick = document.createElement('span');
+      tick.className = 'tick';
+      tick.textContent = '✓';
+
+      r.parentNode.insertBefore(label, r);
+      label.appendChild(r);
+      label.appendChild(span);
+      label.appendChild(tick);
+    });
+  }
+
+  // 1) Upgrade inicial (si hay preguntas ya en el DOM al cargar)
+  document.addEventListener('DOMContentLoaded', ()=> enhanceRadios(document));
+
+  // 2) Lo expongo para que lo llames después de renderizar preguntas dinámicamente
+  window.IngresoU = window.IngresoU || {};
+  window.IngresoU.enhanceRadios = enhanceRadios;
+})();
+</script>
+
 </body>
 </html>
 
