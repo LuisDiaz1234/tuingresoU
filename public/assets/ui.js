@@ -61,12 +61,27 @@
   };
 
   // Nav chips de presets
-  $$('[data-preset]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const mode = btn.getAttribute('data-preset');
+  function haveSession(){
+  return !!(localStorage.getItem('ingresou_email') && localStorage.getItem('ingresou_key'));
+}
+function scrollToLogin(){
+  const form = document.getElementById('login-form');
+  if(form){ form.scrollIntoView({behavior:'smooth',block:'start'}); }
+}
+$$('[data-preset]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const mode = btn.getAttribute('data-preset');
+    if(haveSession()){
       window.location.href = `/exam.html?mode=${encodeURIComponent(mode)}`;
-    });
+    }else{
+      // marca el campo y lleva al login
+      const code = document.getElementById('login-code');
+      if(code){ code.focus(); code.placeholder = 'Necesitas iniciar sesión'; }
+      scrollToLogin();
+    }
   });
+});
+
 
   // Login quick inline (si falla el asset oficial)
   //  - Normaliza code/email
