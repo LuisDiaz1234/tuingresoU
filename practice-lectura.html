@@ -1,120 +1,99 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>IngresoU – Comprensión Lectora</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:900px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
-    .muted{color:#475569}
-    nav a{margin-right:12px}
-    button{padding:10px 14px;border:0;border-radius:10px;background:#0ea5e9;color:#fff;font-weight:600;cursor:pointer}
-    button:disabled{background:#94a3b8;cursor:not-allowed}
-    label{display:block;margin:6px 0}
-  </style>
-</head>
-<body>
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Práctica – Comprensión Lectora</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:1000px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
+button{padding:10px 14px;border:0;border-radius:10px;background:#0ea5e9;color:#fff;font-weight:700;cursor:pointer}
+.muted{color:#475569}.ok{color:#059669}.err{color:#dc2626}
+.q{margin:8px 0 14px}
+</style></head><body>
 <header>
   <h1>IngresoU</h1>
-  <nav>
-    <a href="/index.html">Inicio</a>
-    <a href="/premium.html">Premium</a>
-    <a href="/leaderboard.html">Ranking</a>
-  </nav>
+  <nav><a href="/index.html">Inicio</a> · <a href="/premium.html">Premium</a> · <a href="/leaderboard.html">Ranking</a></nav>
 </header>
 
 <div class="card">
-  <h2>Práctica – Comprensión Lectora</h2>
-  <div id="quizWrap" class="muted">Cargando preguntas...</div>
-  <div class="card">
-    <button id="btnSubmit" disabled>Enviar respuestas</button>
-    <p id="result" class="muted"></p>
-  </div>
+  <h2>Comprensión Lectora</h2>
+  <p class="muted">Lee con atención y elige la mejor respuesta. Al enviar verás explicaciones y tu puntaje.</p>
 </div>
 
+<div id="wrap" class="card">Cargando…</div>
+
 <script>
-const TOPIC = 'lectura';
-const FALLBACK = [
-  {q:'La idea principal de un texto es...', choices:['Un ejemplo','El detalle menor','Lo más importante que comunica','La cita'], a:2},
-  {q:'Sinónimo de "feliz"', choices:['Triste','Contento','Serio','Sombrío'], a:1},
-  {q:'Inferir requiere...', choices:['Memorizar','Deducir lo implícito','Ignorar el contexto','Traducir'], a:1},
-  {q:'"Por lo tanto" indica...', choices:['Causa','Consecuencia','Contraste','Definición'], a:1},
-  {q:'Antónimo de "oscuro"', choices:['Tenue','Luminoso','Sombrío','Apagado'], a:1},
-  {q:'Un párrafo está formado por...', choices:['Palabras sueltas','Oraciones relacionadas','Sílabas','Citas'], a:1},
-  {q:'"Explícito" significa...', choices:['Dicho claramente','Sugiere','Oculto','Implicado'], a:0},
-  {q:'Moraleja suele aparecer en...', choices:['Fábulas','Noticias','Manuales','Enciclopedias'], a:0},
-  {q:'"Según el texto" exige...', choices:['Opinión personal','Dato textual','Hipótesis creativa','Resumen libre'], a:1},
-  {q:'Onomatopeya es...', choices:['Imitación de sonidos','Figura de imagen','Tropo numérico','Metáfora visual'], a:0},
-];
+const TOPIC='lectura';
+let START=Date.now(), QUESTIONS=[];
 
-function getSession(){
-  const email = localStorage.getItem('ingresou_email')||'';
-  const code  = localStorage.getItem('ingresou_key')||'';
-  return {email, code};
+function radio(name, idx, text){ return `<label style="display:block;margin:6px 0"><input type="radio" name="${name}" value="${idx}"> ${text}</label>`; }
+
+function render(list){
+  const html = list.map((q,i)=>{
+    const opts = q.choices.map((c,j)=>radio('q'+i, j, c)).join('');
+    return `<div class="q"><strong>${i+1}. ${q.prompt}</strong>${opts}</div>`;
+  }).join('') + `<button id="btnSend">Enviar respuestas</button> <span id="msg" class="muted"></span>`;
+  document.getElementById('wrap').innerHTML = html;
+  document.getElementById('btnSend').onclick = grade;
 }
 
-let startTime = Date.now();
-let questions = [];
-
-async function loadQuestions(){
-  const sess = getSession();
-  if(!sess.email || !sess.code) location.href='/index.html';
-  try {
-    const res = await fetch('/api/generate-questions', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({topic: TOPIC, count: 10})
-    });
-    const data = await res.json();
-    if(Array.isArray(data.questions)) questions = data.questions;
-    else questions = FALLBACK.map(x=>({question:x.q, choices:x.choices, answer_index:x.a}));
-  } catch(e) {
-    questions = FALLBACK.map(x=>({question:x.q, choices:x.choices, answer_index:x.a}));
-  }
-  renderQuiz();
-}
-
-function renderQuiz(){
-  const wrap = document.getElementById('quizWrap');
-  const items = questions.map(function(q, i){
-    const opts = q.choices.map(function(c,j){
-      return '<label><input type="radio" name="q'+i+'" value="'+j+'"> '+c+'</label>';
-    }).join('<br>');
-    return '<div class="card"><strong>'+(i+1)+'.</strong> '+q.question+'<div style="margin-top:8px">'+opts+'</div></div>';
-  }).join('');
-  wrap.innerHTML = items;
-  document.getElementById('btnSubmit').disabled = false;
-}
-
-async function submit(){
-  const btn = document.getElementById('btnSubmit');
-  if(btn.disabled) return;
-  btn.disabled = true;
-  btn.textContent = 'Enviando...';
-
-  const dur = Math.round((Date.now()-startTime)/1000);
-  let score = 0;
-  questions.forEach(function(q,i){
-    const sel = document.querySelector('input[name="q'+i+'"]:checked');
-    if(sel && Number(sel.value) === Number(q.answer_index)) score++;
+async function grade(){
+  let score=0;
+  const res=[];
+  QUESTIONS.forEach((q,i)=>{
+    const sel = document.querySelector(`input[name="q${i}"]:checked`);
+    const v = sel ? parseInt(sel.value,10) : -1;
+    const ok = v===q.answer_index;
+    if(ok) score++;
+    res.push({ok, chosen:v});
   });
+  const dur = Math.round((Date.now()-START)/1000);
 
-  const sess = getSession();
+  const blocks = QUESTIONS.map((q,i)=>{
+    const chosen = res[i].chosen;
+    const ok = res[i].ok;
+    const correctTxt = q.choices[q.answer_index];
+    const chosenTxt = chosen>=0 ? q.choices[chosen] : '—';
+    const expl = q.explanation ? `<div class="muted">Explicación: ${q.explanation}</div>` : '';
+    return `<div class="q"><strong>${i+1}. ${q.prompt}</strong>
+      <div>Tu respuesta: ${ok?'<span class="ok"><strong>'+chosenTxt+'</strong></span>':'<span class="err">'+chosenTxt+'</span>'}</div>
+      <div>Correcta: <strong>${correctTxt}</strong></div>
+      ${expl}
+    </div>`;
+  }).join('');
+
+  document.getElementById('wrap').innerHTML = `<h3>Resultados</h3><p>Puntaje: <strong>${score}/10</strong> · Tiempo: ${dur}s</p>${blocks}`;
+
   try{
-    await fetch('/api/submit-score', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email: sess.email, code: sess.code, topic: TOPIC, score: score, duration: dur})
-    });
-  }catch(e){}
-
-  document.getElementById('result').innerHTML = 'Puntaje: <strong>'+score+'/10</strong> en '+dur+'s';
-  btn.textContent = 'Enviado';
+    const email = localStorage.getItem('ingresou_email')||'';
+    const code  = localStorage.getItem('ingresou_key')||'';
+    if(email && code){
+      await fetch('/api/submit-score',{method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email, code, topic:TOPIC, score, duration:dur })
+      });
+    }
+  }catch(_){}
 }
 
-document.getElementById('btnSubmit').addEventListener('click', submit);
-loadQuestions();
+async function load(){
+  try{
+    const r = await fetch('/api/generate-questions', {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ topic:TOPIC, count:10 })
+    });
+    const d = await r.json();
+    if(d.ok && Array.isArray(d.items) && d.items.length){
+      QUESTIONS = d.items; render(QUESTIONS);
+      return;
+    }
+  }catch(_){}
+  // Fallback lector
+  QUESTIONS = [
+    {prompt:'En el texto: "Ana estudia porque mañana tiene examen". ¿Cuál es la causa?', choices:['Tiene examen','Ana estudia','Mañana'], answer_index:0, explanation:'La causa es el motivo: tener examen.'},
+    {prompt:'"El jardín estaba húmedo; había llovido". ¿Qué relación existe?', choices:['Causa-efecto','Contraste','Secuencia'], answer_index:0, explanation:'La lluvia causa la humedad.'},
+    {prompt:'"Pedro, que es médico, llegó tarde". ¿Qué función cumple "que es médico"?', choices:['Aposición/explicación','Sujeto','Predicado'], answer_index:0, explanation:'Es una aclaración del sujeto.'},
+  ];
+  while(QUESTIONS.length<10) QUESTIONS.push(QUESTIONS[0]);
+  render(QUESTIONS.slice(0,10));
+}
+load();
 </script>
-</body>
-</html>
-
+</body></html>
