@@ -136,6 +136,36 @@ async function generate(params){
       body: JSON.stringify({ count_per_section: count, difficulty: difficulty==='mixed'?undefined:difficulty, variant, time_limit_seconds: time })
     });
     const d = await r.json();
+    // dentro de function generate(params) { ... }
+try{
+  const r = await fetch('/api/generate-exam', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ count_per_section: count, difficulty: difficulty==='mixed'?undefined:difficulty, variant, time_limit_seconds: time })
+  });
+  const d = await r.json();
+  if(d.ok){
+    EXAM = d.exam;
+    document.getElementById('seed').textContent = 'seed='+EXAM.seed+' · dificultad='+EXAM.difficulty;
+
+    // NUEVO: banner de calidad
+    const ratio = (d.meta && typeof d.meta.ai_ratio==='number') ? d.meta.ai_ratio : 0;
+    const msgEl = document.getElementById('genMsg');
+    if(ratio >= 0.5){
+      msgEl.innerHTML = `Calidad: <strong>IA</strong> (${Math.round(ratio*100)}% IA)`;
+    }else{
+      msgEl.innerHTML = `Calidad: <strong>Básico</strong> (pocas preguntas IA).`;
+    }
+
+    renderExam(); startTimer();
+  }else{
+    document.getElementById('wrap').textContent='No se pudo generar el examen. Intenta de nuevo.';
+  }
+}catch{
+  document.getElementById('wrap').textContent='Error de red.';
+}finally{
+  if(btn){ btn.disabled = false; btn.textContent = 'Generar examen'; }
+}
+
     if(d.ok){
       EXAM = d.exam;
       document.getElementById('seed').textContent = 'seed='+EXAM.seed+' · dificultad='+EXAM.difficulty;
