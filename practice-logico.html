@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IngresoU</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:900px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
+    label{display:block;margin:8px 0 4px}
+    input,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px}
+    button{padding:10px 14px;border:0;border-radius:10px;background:#0ea5e9;color:#fff;font-weight:600;cursor:pointer}
+    button:disabled{background:#94a3b8;cursor:not-allowed}
+    nav a{margin-right:12px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left}
+    .muted{color:#475569;font-size:.9rem}
+    .banner{background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px;margin:10px 0}
+    .ok{color:#059669}.err{color:#dc2626}
+    .hidden{display:none}
+    small.code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:2px 6px}
+  </style>
+</head>
+<body>
+<header>
+  <h1>IngresoU</h1>
+  <nav>
+    <a href="/index.html">Inicio</a>
+    <a href="/premium.html">Premium</a>
+    <a href="/leaderboard.html">Ranking</a>
+  </nav>
+</header>
+
+<div class="card">
+  <h2>Práctica – Razonamiento Lógico</h2>
+  <div id="quizWrap" class="muted">Cargando preguntas...</div>
+  <div class="card">
+    <button id="btnSubmit" disabled>Enviar respuestas</button>
+    <p id="result" class="muted"></p>
+  </div>
+</div>
+<script>
+const TOPIC = 'logico';
+const FALLBACK = (function(){
+  if(TOPIC === 'algebra') return [
+    {q:'Resuelve: 2x + 6 = 14', choices:['x=3','x=4','x=5','x=6'], a:1},
+    {q:'Factoriza: x^2 - 9', choices:['(x-9)(x+1)','(x-3)(x+3)','(x-9)^2','No se puede'], a:1},
+    {q:'Simplifica: (2x^2 * 3x)', choices:['5x^2','6x^3','6x^2','x^5'], a:1},
+    {q:'Si f(x)=x^2, f(3)=', choices:['6','9','3','12'], a:1},
+    {q:'Pendiente entre (0,0) y (2,4)', choices:['1','2','3','4'], a:1},
+    {q:'Raíces de x^2 - 4x = 0', choices:['0 y 4','1 y 3','-2 y 2','-4 y 4'], a:0},
+    {q:'| -7 | =', choices:['-7','0','7','14'], a:2},
+    {q:'(a+b)^2 =', choices:['a^2+b^2','a^2+2ab+b^2','2a^2+2b^2','a^2-ab+b^2'], a:1},
+    {q:'Derivada de x^2 (concepto)', choices:['2x','x','constante','x^3'], a:0},
+    {q:'Log base 10 de 100', choices:['1','2','10','100'], a:1}
+  ];
+  if(TOPIC === 'logico') return [
+    {q:'Si todos los A son B y algunos B son C, entonces:', choices:['Todos los A son C','Algunos A podrían ser C','Ningún A es C','Todos los C son A'], a:1},
+    {q:'Serie: 2, 4, 8, 16, ...', choices:['18','24','32','12'], a:2},
+    {q:'Negación de: "Todos estudian"', choices:['Nadie estudia','Algunos no estudian','Todos no estudian','Algunos estudian'], a:1},
+    {q:'Si p⇒q y p es falsa:', choices:['q es verdadera','q es falsa','No se sabe','p y q verdaderas'], a:2},
+    {q:'Analogía: Ave es a volar como pez es a...', choices:['nadar','caminar','saltar','correr'], a:0},
+    {q:'Premisas válidas implican...', choices:['Conclusión siempre verdadera','Argumento válido','Falacia','Contradicción'], a:1},
+    {q:'Ordena por tamaño: KB, MB, GB', choices:['KB<MB<GB','MB<KB<GB','GB<MB<KB','KB=MB=GB'], a:0},
+    {q:'5 es a 25 como 3 es a', choices:['6','8','9','12'], a:2},
+    {q:'Complemento de conjunto universal U', choices:['∅','U','Depende del subconjunto','Todo'], a:2},
+    {q:'Si hoy es lunes, en 3 días será', choices:['Jueves','Viernes','Sábado','Martes'], a:0}
+  ];
+  return [
+    {q:'Idea principal es...', choices:['Un ejemplo','La intención del autor','Lo más importante del texto','La conclusión literal'], a:2},
+    {q:'Sinónimo de "rápido"', choices:['Lento','Veloz','Pausado','Pesado'], a:1},
+    {q:'Inferir es...', choices:['Copiar','Deducir implícito','Memorizar','Resumir'], a:1},
+    {q:'Antónimo de "difícil"', choices:['Complicado','Fácil','Duro','Complejo'], a:1},
+    {q:'Un párrafo es...', choices:['Una sola palabra','Conjunto de oraciones','Una oración','Una sílaba'], a:1},
+    {'q':'"Aunque" introduce...', choices:['Causa','Contraste','Consecuencia','Definición'], a:1},
+    {q:'Moraleja se encuentra en...', choices:['Textos técnicos','Fábulas','Reportes','Recetas'], a:1},
+    {'q':'"Según el texto" pide...', choices:['Opinión','Dato textual','Resumen','Hipótesis'], a:1},
+    {'q':'"Explícito" significa...', choices:['Sugiere','Se entiende sin decirlo','Está dicho claramente','Es imposible'], a:2},
+    {q:'Onomatopeya es...', choices:['Figura de sonido','Figura de imagen','Figura de número','Figura geométrica'], a:0}
+  ];
+})();
+function getSession(){
+  const email = localStorage.getItem('ingresou_email')||'';
+  const code = localStorage.getItem('ingresou_key')||'';
+  const university = localStorage.getItem('ingresou_university')||'';
+  return {email, code, university};
+}
+let startTime = Date.now();
+let questions = [];
+async function loadQuestions(){
+  const sess = getSession();
+  if(!sess.email || !sess.code) location.href='/index.html';
+  try {
+    const res = await fetch('/api/generate-questions', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({topic: TOPIC, count: 10})});
+    const data = await res.json();
+    if(Array.isArray(data.questions)) questions = data.questions;
+    else questions = FALLBACK.map(x=>({question:x.q, choices:x.choices, answer_index:x.a}));
+  } catch(e) { questions = FALLBACK.map(x=>({question:x.q, choices:x.choices, answer_index:x.a})); }
+  renderQuiz();
+}
+function renderQuiz(){
+  const wrap = document.getElementById('quizWrap');
+  const items = questions.map(function(q, i){
+    const opts = q.choices.map(function(c,j){ return '<label><input type="radio" name="q'+i+'" value="'+j+'"> '+c+'</label>'; }).join('<br>');
+    return '<div class="card"><strong>'+(i+1)+'.</strong> '+q.question+'<div style="margin-top:8px">'+opts+'</div></div>';
+  }).join('');
+  wrap.innerHTML = items;
+  document.getElementById('btnSubmit').disabled = false;
+}
+async function submit(){
+  const dur = Math.round((Date.now()-startTime)/1000);
+  let score = 0;
+  questions.forEach(function(q,i){
+    const sel = document.querySelector('input[name="q'+i+'"]:checked');
+    if(sel && Number(sel.value) === Number(q.answer_index)) score++;
+  });
+  const sess = getSession();
+  try{ await fetch('/api/submit-score', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email: sess.email, code: sess.code, topic: TOPIC, score: score, duration: dur})}); }catch(e){}
+  document.getElementById('result').innerHTML = 'Puntaje: <strong>'+score+'/10</strong> en '+dur+'s';
+}
+document.getElementById('btnSubmit').addEventListener('click', submit);
+loadQuestions();
+</script>
+
+<script src="/assets/renewal-banner.js"></script>
+</body></html>
