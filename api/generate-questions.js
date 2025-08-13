@@ -1,87 +1,78 @@
 import { getClient, cors, parseBody } from './_lib/supaClient.js';
 
-// Plantillas determinísticas (fallback)
-function deterministicAlgebra(){ return [
-  {question:'Resuelve: 3x - 5 = 16', choices:['x=7','x=21','x=11/3','x=5'], answer_index:0},
-  {question:'Factoriza: x^2 + 5x + 6', choices:['(x+2)(x+3)','(x+1)(x+6)','(x-2)(x-3)','(x+6)^2'], answer_index:0},
-  {question:'Simplifica: (x^3/x)', choices:['x^2','x^4','x','1'], answer_index:0},
-  {question:'Si f(x)=2x+1, f(4)=', choices:['7','9','5','3'], answer_index:1},
-  {question:'Pendiente entre (1,2) y (3,6)', choices:['2','4','1','3'], answer_index:0},
-  {question:'Raíces de x^2 - 1 = 0', choices:['-1 y 1','0 y 1','-1 y 0','1 y 2'], answer_index:0},
-  {question:'(a-b)^2 =', choices:['a^2+b^2','a^2-2ab+b^2','a^2-ab+b^2','2a^2-2b^2'], answer_index:1},
-  {question:'Derivada de 5x', choices:['5','x','5x^2','0'], answer_index:0},
-  {question:'Log base 2 de 8', choices:['2','3','4','8'], answer_index:1},
-  {question:'Matriz identidad de orden 2', choices:['[[1,0],[0,1]]','[[0,1],[1,0]]','[[2,0],[0,2]]','[[1,1],[1,1]]'], answer_index:0},
-];}
-function deterministicLogico(){ return [
-  {question:'Si p ⇒ q y q es falsa, entonces:', choices:['p es verdadera','p es falsa','p no se puede determinar','p y q verdaderas'], answer_index:1},
-  {question:'Serie: 1, 3, 6, 10, ...', choices:['12','13','14','15'], answer_index:2},
-  {question:'Negación de: "Algunos estudian"', choices:['Todos estudian','Nadie estudia','Todos no estudian','Algunos no estudian'], answer_index:3},
-  {question:'Silogismo válido es...', choices:['Falacia','Argumento correcto','Paradoja','Analogía'], answer_index:1},
-  {question:'Analogía: Sol es a día como luna es a...', choices:['noche','estrella','cielo','mar'], answer_index:0},
-  {question:'Conjuntos A⊂B significa...', choices:['A es igual a B','A es subconjunto de B','A no tiene elementos','B es subconjunto de A'], answer_index:1},
-  {question:'SI 2⇒4 y 4⇒8, entonces 2⇒8 es...', choices:['Válido por transitividad','Falso','Contradicción','No se sabe'], answer_index:0},
-  {question:'Verdadero/Falso: (p∧q) ⇒ p', choices:['Verdadero','Falso','Depende','Indeterminado'], answer_index:0},
-  {question:'Si hoy es miércoles, pasado mañana es', choices:['Viernes','Sábado','Domingo','Lunes'], answer_index:0},
-  {question:'Serie: 2, 5, 9, 14, ... suma incrementos', choices:['+3,+4,+5','+2,+3,+5','+1,+2,+3','+4,+5,+6'], answer_index:0},
-];}
-function deterministicLectura(){ return [
-  {question:'La idea principal de un texto es...', choices:['Un ejemplo','El detalle menor','Lo más importante que comunica','La cita'], answer_index:2},
-  {question:'Sinónimo de "feliz"', choices:['Triste','Contento','Serio','Sombrío'], answer_index:1},
-  {question:'Inferir requiere...', choices:['Memorizar','Deducir lo implícito','Ignorar el contexto','Traducir'], answer_index:1},
-  {question:'"Por lo tanto" indica...', choices:['Causa','Consecuencia','Contraste','Definición'], answer_index:1},
-  {question:'Antónimo de "oscuro"', choices:['Tenue','Luminoso','Sombrío','Apagado'], answer_index:1},
-  {question:'Un párrafo está formado por...', choices:['Palabras sueltas','Oraciones relacionadas','Sílabas','Citas'], answer_index:1},
-  {question:'"Explícito" significa...', choices:['Dicho claramente','Sugiere','Oculto','Implicado'], answer_index:0},
-  {question:'Moraleja suele aparecer en...', choices:['Fábulas','Noticias','Manuales','Enciclopedias'], answer_index:0},
-  {question:'"Según el texto" exige...', choices:['Opinión personal','Dato textual','Hipótesis creativa','Resumen libre'], answer_index:1},
-  {question:'Onomatopeya es...', choices:['Imitación de sonidos','Figura de imagen','Tropo numérico','Metáfora visual'], answer_index:0},
-];}
+const ALLOWED_TOPICS = ['algebra','logico','lectura'];
 
-// util
-function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
-
-export default async function handler(req, res){
-  cors(res);
-  if(req.method === 'OPTIONS'){ res.status(200).end(); return; }
-  if(req.method !== 'POST'){ res.status(405).json({ok:false, error:'METHOD_NOT_ALLOWED'}); return; }
-
-  const body = await parseBody(req);
-  const topic = (body.topic||'').toString().toLowerCase().trim();
-  const count = Math.min(10, Math.max(1, parseInt(body.count||10,10)));
-  if(!['algebra','logico','lectura'].includes(topic)){
-    res.status(400).json({ok:false, error:'INVALID_TOPIC'}); return;
+function makeFallback(topic, n=10){
+  // Plantillas determinísticas y simples por tema (si la DB no tiene suficientes)
+  const arr=[];
+  for(let i=1;i<=n;i++){
+    if(topic==='algebra'){
+      const a=i+1,b=i+2; // 2..,3..
+      const correct=a+b;
+      arr.push({
+        id:null,
+        prompt:`¿Cuánto es ${a} + ${b}?`,
+        choices:[String(correct), String(correct+1), String(correct-1), String(correct+2)],
+        answer_index:0,
+        explanation:`Suma directa: ${a} + ${b} = ${correct}.`
+      });
+    }else if(topic==='logico'){
+      const seq=[i,i+1,i+2,i+3];
+      arr.push({
+        id:null,
+        prompt:`Completa la secuencia: ${seq[0]}, ${seq[1]}, ${seq[2]}, __`,
+        choices:[String(seq[3]), String(seq[2]+2), String(seq[1]+3)],
+        answer_index:0,
+        explanation:`Secuencia +1: el siguiente es ${seq[3]}.`
+      });
+    }else{ // lectura
+      arr.push({
+        id:null,
+        prompt:`En el texto: "Juan estudia porque quiere aprobar el examen". ¿Cuál es la causa?`,
+        choices:['Quiere aprobar el examen','Juan estudia','El examen es mañana'],
+        answer_index:0,
+        explanation:`La causa es el motivo: "quiere aprobar el examen".`
+      });
+    }
   }
+  return arr;
+}
 
-  let pool = [];
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+export default async function handler(req,res){
+  cors(res);
+  if(req.method==='OPTIONS'){ res.status(200).end(); return; }
+  if(req.method!=='POST'){ res.status(405).json({ok:false,error:'METHOD_NOT_ALLOWED'}); return; }
+
   try{
+    const b = await parseBody(req);
+    const topic = (b.topic||'').toString().trim();
+    const count = Math.max(1, Math.min(parseInt(b.count||'10',10), 30));
+
+    if(!ALLOWED_TOPICS.includes(topic)){ res.status(400).json({ok:false,error:'INVALID_TOPIC'}); return; }
+
     const supa = getClient();
-    // Trae hasta 1000 activas por tema y baraja en servidor (lo barajamos en Node)
     const { data, error } = await supa
       .from('questions')
-      .select('prompt, choices, answer_index')
-      .eq('topic', topic)
-      .eq('active', true)
-      .limit(1000);
+      .select('id,prompt,choices,answer_index,explanation')
+      .eq('topic', topic).eq('active', true)
+      .order('created_at', {ascending:false})
+      .limit(100);
+
     if(error) throw error;
-    if(Array.isArray(data)){
-      pool = data
-        .map(q => ({question: q.prompt, choices: q.choices, answer_index: q.answer_index}))
-        .filter(q => Array.isArray(q.choices) && Number.isInteger(q.answer_index));
+
+    let items = Array.isArray(data) ? data.slice() : [];
+    if(items.length>0) shuffle(items);
+    if(items.length < count){
+      const missing = count - items.length;
+      items = items.concat(makeFallback(topic, missing));
+    }else{
+      items = items.slice(0, count);
     }
+
+    res.status(200).json({ok:true, items});
   }catch(e){
-    // silencioso: fallback si falla DB
-    pool = [];
+    res.status(500).json({ok:false,error:'SERVER_ERROR',detail:e.message});
   }
-
-  if(pool.length < count){
-    const fallback =
-      topic === 'algebra' ? deterministicAlgebra() :
-      topic === 'logico' ? deterministicLogico() :
-      deterministicLectura();
-    pool = pool.concat(fallback);
-  }
-
-  const questions = shuffle(pool).slice(0, count);
-  res.status(200).json({ok:true, questions});
 }
