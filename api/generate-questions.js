@@ -1,4 +1,4 @@
-import { cors, parseBody } from '../_lib/supaClient.js';
+import { cors, parseBody } from './_lib/supaClient.js';
 function deterministicAlgebra(){ return [
   {question:'Resuelve: 3x - 5 = 16', choices:['x=7','x=21','x=11/3','x=5'], answer_index:0},
   {question:'Factoriza: x^2 + 5x + 6', choices:['(x+2)(x+3)','(x+1)(x+6)','(x-2)(x-3)','(x+6)^2'], answer_index:0},
