@@ -3,114 +3,188 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>IngresoU</title>
+  <title>IngresoU – Acceso</title>
+  <meta name="description" content="Prepárate para ingresar a la UTP o la Universidad de Panamá con IngresoU. Practica Álgebra, Razonamiento Lógico y Comprensión Lectora." />
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:900px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
-    label{display:block;margin:8px 0 4px}
-    input{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px}
-    button{padding:10px 14px;border:0;border-radius:10px;background:#0ea5e9;color:#fff;font-weight:600;cursor:pointer}
-    button:disabled{background:#94a3b8;cursor:not-allowed}
-    .muted{color:#475569}
-    .ok{color:#059669}.err{color:#dc2626}
-    nav a{margin-right:12px}
-    small.code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:2px 6px}
+    :root{
+      --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#475569;
+      --primary:#0ea5e9; --primary-600:#0284c7; --border:#e2e8f0; --danger:#dc2626; --ok:#059669;
+      --radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;background:var(--bg);color:var(--text);margin:0}
+    header{max-width:1000px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+    header h1{margin:0;font-size:28px;font-weight:800}
+    nav a{margin-left:16px;color:#334155;text-decoration:none;font-weight:600}
+    nav a:hover{color:var(--primary)}
+    main{max-width:1000px;margin:0 auto;padding:0 24px 32px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 1px 2px rgba(0,0,0,.04);padding:18px}
+    .muted{color:var(--muted)}
+    label{display:block;margin:10px 0 6px}
+    input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px}
+    button{padding:10px 16px;border:0;border-radius:10px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer}
+    button:hover{background:var(--primary-600)}
+    .btn-secondary{background:#e2e8f0;color:#0f172a}
+    .btn-secondary:hover{background:#cbd5e1}
+    .row{display:flex;gap:12px;align-items:center}
+    .w-100{width:100%}
+    .mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}
+    .err{color:var(--danger)} .ok{color:var(--ok)}
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media(min-width:900px){ .grid{grid-template-columns:1.2fr .8fr} }
+    small.code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#f1f5f9;border:1px solid var(--border);border-radius:6px;padding:2px 6px}
   </style>
 </head>
 <body>
+
 <header>
   <h1>IngresoU</h1>
   <nav>
     <a href="/index.html">Inicio</a>
     <a href="/premium.html">Premium</a>
     <a href="/leaderboard.html">Ranking</a>
+    <!-- Paso C: enlace directo al checkout Yappy -->
+    <a href="/checkout.html">Comprar Premium</a>
   </nav>
 </header>
 
-<div class="card">
-  <h2>Acceso</h2>
-  <p class="muted">Entra con tu <strong>KEY</strong> y correo. Si tu KEY no está redimida, la activamos automáticamente para tu correo.</p>
+<main>
+  <div class="grid">
+    <section class="card">
+      <h2 style="margin:0 0 6px">Acceso</h2>
+      <p class="muted">Entra con tu <strong>KEY</strong> y correo. Si tu KEY no está redimida, la activamos automáticamente para tu correo.</p>
 
-  <form id="loginForm" autocomplete="on">
-    <label for="email">Correo</label>
-    <input type="email" id="email" placeholder="tu@correo.com" required />
+      <label for="email">Correo</label>
+      <input id="email" type="email" placeholder="tu@correo.com" autocomplete="email" />
 
-    <label for="code">KEY</label>
-    <input type="text" id="code" placeholder="UTP-ABCD-1234" required />
+      <label for="code" class="mt-12">KEY</label>
+      <input id="code" type="text" placeholder="UTP-ABCD-1234" autocomplete="one-time-code" />
 
-    <div style="margin-top:12px">
-      <button id="btnLogin" type="submit">Entrar</button>
-    </div>
-  </form>
+      <div class="row mt-16">
+        <button id="btnLogin">Entrar</button>
+        <span id="msg" class="muted"></span>
+      </div>
 
-  <p id="status" class="muted" style="margin-top:10px"></p>
-</div>
+      <!-- Paso C: CTA adicional bajo el formulario -->
+      <div class="mt-12">
+        <a class="muted" href="/checkout.html">¿No tienes KEY? <strong>Comprar Premium con Yappy</strong></a>
+      </div>
+
+      <div class="mt-12 muted" style="font-size:14px">
+        <div>Consejos:</div>
+        <ul style="margin:6px 0 0 18px;padding:0">
+          <li>La KEY distingue guiones, pero no mayúsculas/minúsculas.</li>
+          <li>Tu correo se guarda localmente para que no lo tengas que escribir otra vez.</li>
+        </ul>
+      </div>
+    </section>
+
+    <aside class="card">
+      <h3 style="margin:0 0 6px">¿Qué incluye Premium?</h3>
+      <ul style="margin:8px 0 0 18px;padding:0">
+        <li>Prácticas de <strong>Álgebra</strong>, <strong>Razonamiento Lógico</strong> y <strong>Comprensión Lectora</strong></li>
+        <li>Generación de preguntas y <em>modo examen</em> ligero</li>
+        <li>Ranking global y rachas</li>
+        <li>Contenido alineado a UTP y UP</li>
+      </ul>
+      <p class="muted mt-12">Hora de validación: <span id="tz"></span></p>
+    </aside>
+  </div>
+</main>
 
 <script>
-function setBusy(btn, busy, txtIdle, txtBusy){
-  if(!btn) return;
-  btn.disabled = !!busy;
-  btn.textContent = busy ? (txtBusy||'Procesando...') : (txtIdle||'Entrar');
-}
-function saveSession(sub, email, code){
-  localStorage.setItem('ingresou_email', email);
-  localStorage.setItem('ingresou_key', code);
-  localStorage.setItem('ingresou_plan', sub.plan || '');
-  localStorage.setItem('ingresou_university', sub.university || '');
-  localStorage.setItem('ingresou_expires_at', sub.expires_at || '');
-}
-async function callJson(url, method='POST', body=null){
-  const res = await fetch(url, {
-    method,
-    headers: {'Content-Type':'application/json'},
-    body: body ? JSON.stringify(body) : null
-  });
-  // Devuelve texto para detectar HTML de error
-  const text = await res.text();
-  try { return JSON.parse(text); } catch { throw new Error('El servidor no respondió JSON válido.'); }
-}
-async function handleLogin(email, code){
-  const status = document.getElementById('status');
-  const btn = document.getElementById('btnLogin');
-  const payload = { email: (email||'').toLowerCase().trim(), code: (code||'').toUpperCase().trim() };
-  if(!payload.email || !payload.code){ status.innerHTML = '<span class="err">Completa correo y KEY.</span>'; return; }
+/* ===== Utilidades ===== */
+const tzEl = document.getElementById('tz');
+try{ tzEl.textContent = new Date().toLocaleString('es-PA', { timeZone:'America/Panama', hour12:false }); }catch(e){ tzEl.textContent = new Date().toISOString(); }
 
+function normalizeEmail(v){ return (v||'').toString().trim().toLowerCase(); }
+function normalizeCode(v){ return (v||'').toString().trim().toUpperCase(); }
+
+async function postJSON(url, body){
   try{
-    setBusy(btn,true,'Entrar','Verificando...');
-    status.textContent = 'Verificando suscripción...';
-    let r = await callJson('/api/get-subscription','POST',payload);
-
-    if(!r.ok && r.error === 'NOT_REDEEMED'){
-      status.textContent = 'KEY no redimida. Intentando redimir...';
-      const rr = await callJson('/api/redeem-key','POST',payload);
-      if(!rr.ok){ throw new Error('No se pudo redimir: '+(rr.error||'error')); }
-      r = await callJson('/api/get-subscription','POST',payload);
-    }
-
-    if(!r.ok){ throw new Error(r.error||'Error'); }
-
-    saveSession(r.subscription, payload.email, payload.code);
-    status.innerHTML = '<span class="ok">Listo. Redirigiendo…</span>';
-    location.href = '/premium.html';
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
+    const ct = res.headers.get('content-type')||'';
+    if(ct.includes('application/json')) return await res.json();
+    // fallback si Vercel devolviera HTML por error:
+    const txt = await res.text();
+    return { ok:false, error:'BAD_JSON', detail: txt.slice(0,200) };
   }catch(e){
-    status.innerHTML = '<span class="err">'+e.message+'</span>';
-  }finally{
-    setBusy(btn,false,'Entrar');
+    return { ok:false, error:'NETWORK_ERROR', detail: e.message };
   }
 }
 
-document.getElementById('loginForm').addEventListener('submit', (e)=>{
-  e.preventDefault();
-  handleLogin(
-    document.getElementById('email').value,
-    document.getElementById('code').value
-  );
-});
-</script>
+function saveSession(s){
+  try{
+    localStorage.setItem('ingresou_email', s.email);
+    localStorage.setItem('ingresou_key', s.code);
+    localStorage.setItem('ingresou_plan', s.plan||'');
+    localStorage.setItem('ingresou_university', s.university||'');
+    localStorage.setItem('ingresou_expires_at', s.expires_at||'');
+  }catch(_){}
+}
 
-<!-- Fallback: si el script inline fallara por cualquier motivo, este hace el mismo login -->
-<script src="/assets/ingresou-login.js" defer></script>
+function showMsg(html, cls='muted'){ const el = document.getElementById('msg'); el.className=cls; el.innerHTML = html; }
+
+/* ===== Prefill de campos si ya guardaste sesión ===== */
+(function prefill(){
+  const e = localStorage.getItem('ingresou_email') || '';
+  const c = localStorage.getItem('ingresou_key') || '';
+  if(e) document.getElementById('email').value = e;
+  if(c) document.getElementById('code').value = c;
+})();
+
+/* ===== Lógica de login con auto-redeem ===== */
+async function login(){
+  const email = normalizeEmail(document.getElementById('email').value);
+  const code  = normalizeCode(document.getElementById('code').value);
+
+  if(!email){ showMsg('<span class="err">Ingresa tu correo.</span>','err'); return; }
+  if(!code){ showMsg('<span class="err">Ingresa tu KEY.</span>','err'); return; }
+  showMsg('Verificando suscripción…');
+
+  // 1) get-subscription
+  let r = await postJSON('/api/get-subscription', { email, code });
+
+  if(r && r.ok){
+    saveSession({ email, code, ...r.subscription });
+    showMsg('<span class="ok">¡Listo! Entrando…</span>', 'ok');
+    setTimeout(()=>location.href='/premium.html', 300);
+    return;
+  }
+
+  // 2) si NOT_REDEEMED → redeem-key y reintenta
+  if(r && !r.ok && r.error === 'NOT_REDEEMED'){
+    showMsg('Activando tu KEY…');
+    const rede = await postJSON('/api/redeem-key', { email, code });
+    if(rede && rede.ok){
+      r = await postJSON('/api/get-subscription', { email, code });
+      if(r && r.ok){
+        saveSession({ email, code, ...r.subscription });
+        showMsg('<span class="ok">¡Activada! Entrando…</span>', 'ok');
+        setTimeout(()=>location.href='/premium.html', 300);
+        return;
+      }
+    }
+  }
+
+  // 3) Errores comunes
+  const err = (r && r.error) ? r.error : 'ERROR_DESCONOCIDO';
+  const detail = (r && r.detail) ? ' · '+r.detail : '';
+  let tip = '';
+  if(err==='NOT_FOUND') tip='No encontramos esa KEY. Revisa los guiones.';
+  else if(err==='EXPIRED') tip='Tu suscripción venció. Puedes renovarla en <a href="/checkout.html">Comprar Premium</a>.';
+  else if(err==='EMAIL_MISMATCH') tip='Esa KEY pertenece a otro correo. Usa el correo con el que se activó.';
+  else if(err==='BAD_JSON') tip='El servidor devolvió un formato inesperado. Reintenta en unos segundos.';
+  else if(err==='NETWORK_ERROR') tip='Problema de red. Verifica tu conexión.';
+
+  showMsg(`<span class="err">Error: ${err}${detail ? ' ('+detail+')' : ''}</span><br><span class="muted">${tip}</span>`, 'err');
+}
+
+/* Eventos */
+document.getElementById('btnLogin').addEventListener('click', login);
+document.getElementById('code').addEventListener('keydown', e=>{ if(e.key==='Enter') login(); });
+document.getElementById('email').addEventListener('keydown', e=>{ if(e.key==='Enter') login(); });
+</script>
 </body>
 </html>
 
