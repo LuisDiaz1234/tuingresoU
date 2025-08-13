@@ -1,69 +1,106 @@
-<!doctype html><html lang="es"><head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>IngresoU – Examen</title>
-<style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:1100px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-a{color:#0369a1}
-.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
-button{padding:10px 14px;border:0;border-radius:10px;background:#0ea5e9;color:#fff;font-weight:700;cursor:pointer}
-button:disabled{background:#cbd5e1;cursor:not-allowed}
-.badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#e2e8f0;color:#334155;font-size:12px}
-.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-.muted{color:#475569}.ok{color:#059669}.err{color:#dc2626}
-.q{margin:8px 0 16px}
-.timer{font-weight:800}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:900px){.grid2{grid-template-columns:1fr}}
-</style></head><body>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>IngresoU – Examen</title>
+  <style>
+    :root{
+      --bg:#f8fafc; --card:#ffffff; --line:#e2e8f0; --text:#0f172a; --muted:#475569;
+      --brand:#0ea5e9; --brand-2:#0284c7; --ok:#059669; --err:#dc2626;
+    }
+    *{box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;margin:0;background:var(--bg);color:var(--text)}
+    a{color:var(--brand-2);text-decoration:none}
+    a:hover{text-decoration:underline}
+    header{max-width:1100px;margin:0 auto;padding:20px 24px;display:flex;justify-content:space-between;align-items:center}
+    .container{max-width:1100px;margin:0 auto;padding:0 24px 24px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+    .btn{display:inline-block;background:var(--brand);color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+    .btn:disabled{background:#cbd5e1;cursor:not-allowed}
+    .input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:12px}
+    .label{display:block;font-size:13px;color:var(--muted);margin:8px 0 6px}
+    .badge{display:inline-block;padding:2px 10px;border-radius:999px;background:#eef2ff;border:1px solid #e0e7ff;color:#3730a3;font-size:12px}
+    .muted{color:var(--muted)} .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+    .timer{font-weight:800}
+    .q{margin:10px 0 18px}
+    .ok{color:var(--ok)} .err{color:var(--err)}
+  </style>
+</head>
+<body>
 <header>
-  <h1>IngresoU</h1>
-  <nav><a href="/index.html">Inicio</a> · <a href="/premium.html">Premium</a> · <a href="/leaderboard.html">Ranking</a></nav>
+  <h1 style="margin:0">IngresoU</h1>
+  <nav class="muted">
+    <a href="/index.html">Inicio</a> ·
+    <a href="/premium.html">Premium</a> ·
+    <a href="/leaderboard.html">Ranking</a>
+  </nav>
 </header>
 
-<div class="card">
-  <h2>Simulador de Examen</h2>
-  <div class="grid2">
-    <div>
-      <label>Dificultad</label>
-      <select id="difficulty">
-        <option value="mixed">Mixta</option>
-        <option value="basic">Básica</option>
-        <option value="medium">Media</option>
-        <option value="hard">Difícil</option>
-      </select>
-      <label style="display:block;margin-top:8px">Preguntas por sección</label>
-      <input id="count" type="number" min="5" max="30" value="10"/>
-      <div style="margin-top:10px"><button id="btnGen">Generar examen</button></div>
-      <p class="muted" id="genMsg">Secciones: Álgebra, Razonamiento Lógico y Comprensión Lectora.</p>
-    </div>
-    <div>
-      <div>Tiempo límite: <span id="limit" class="badge">30:00</span></div>
-      <div>Tiempo restante: <span id="timer" class="timer">—</span></div>
-      <div class="muted mono" id="seed"></div>
+<div class="container">
+
+  <div class="card">
+    <h2 style="margin:0 0 10px 0">Simulador de Examen</h2>
+    <div class="grid2">
+      <div>
+        <label class="label">Dificultad</label>
+        <select id="difficulty">
+          <option value="mixed">Mixta (recomendada)</option>
+          <option value="basic">Básica</option>
+          <option value="medium">Media</option>
+          <option value="hard">Difícil</option>
+        </select>
+
+        <label class="label">Preguntas por sección</label>
+        <input id="count" class="input" type="number" min="5" max="30" value="10"/>
+
+        <div style="margin-top:10px">
+          <button id="btnGen" class="btn">Generar examen</button>
+        </div>
+
+        <!-- Banner de calidad/estado -->
+        <p id="genMsg" class="muted" style="margin:10px 0 0">
+          Secciones: Álgebra, Razonamiento Lógico y Comprensión Lectora.
+        </p>
+      </div>
+
+      <div>
+        <div>Tiempo límite: <span id="limit" class="badge">30:00</span></div>
+        <div>Tiempo restante: <span id="timer" class="timer">—</span></div>
+        <div class="muted mono" id="seed"></div>
+      </div>
     </div>
   </div>
+
+  <div id="wrap" class="card">Genera el examen para comenzar.</div>
+
 </div>
 
-<div id="wrap" class="card">Genera el examen para comenzar.</div>
-
 <script>
-let EXAM=null, START=0, TICK=null;
+/* Utilidades */
+let EXAM = null, START = 0, TICK = null;
 function fmt(sec){ const m=Math.floor(sec/60), s=sec%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
 
+/* Render del examen */
 function renderExam(){
   if(!EXAM){ document.getElementById('wrap').textContent='Genera el examen para comenzar.'; return; }
   const blocks = EXAM.sections.map((sec,si)=>{
     const qs = sec.items.map((q,qi)=>{
-      const opts = q.choices.map((c,ci)=>`<label style="display:block;margin:4px 0"><input type="radio" name="s${si}q${qi}" value="${ci}"> ${c}</label>`).join('');
+      const opts = q.choices.map((c,ci)=>(
+        `<label style="display:block;margin:6px 0"><input type="radio" name="s${si}q${qi}" value="${ci}"> ${c}</label>`
+      )).join('');
       return `<div class="q"><strong>${qi+1}. ${q.prompt}</strong>${opts}</div>`;
     }).join('');
-    return `<h3>${sec.title} <span class="badge">${sec.items.length} preguntas</span></h3>${qs}`;
+    return `<h3 style="margin:12px 0">${sec.title} <span class="badge">${sec.items.length} preguntas</span></h3>${qs}`;
   }).join('');
-  document.getElementById('wrap').innerHTML = blocks + `<button id="btnSend">Enviar examen</button> <span id="msg" class="muted"></span>`;
+  document.getElementById('wrap').innerHTML =
+    blocks + `<button id="btnSend" class="btn">Enviar examen</button> <span id="msg" class="muted"></span>`;
   document.getElementById('btnSend').onclick = grade;
 }
 
+/* Timer */
 function startTimer(){
   const limit = EXAM.time_limit_seconds || 1800;
   document.getElementById('limit').textContent = fmt(limit);
@@ -77,9 +114,11 @@ function startTimer(){
   }, 1000);
 }
 
+/* Calificar y mostrar resultados */
 async function grade(){
   if(!EXAM) return;
   clearInterval(TICK);
+
   let score=0, answered=0;
   const sectionsRes = EXAM.sections.map((sec,si)=>{
     let local=0;
@@ -87,7 +126,7 @@ async function grade(){
       const sel = document.querySelector(`input[name="s${si}q${qi}"]:checked`);
       const v = sel ? parseInt(sel.value,10) : -1;
       const ok = v===q.answer_index;
-      if(ok) { score++; local++; }
+      if(ok){ score++; local++; }
       if(v>=0) answered++;
       return { ok, chosen:v, correct:q.answer_index, prompt:q.prompt, choices:q.choices, explanation:q.explanation||'' };
     });
@@ -111,6 +150,7 @@ async function grade(){
     }).join('');
   document.getElementById('wrap').innerHTML = body;
 
+  // Guarda score (no bloquea)
   try{
     const email = localStorage.getItem('ingresou_email')||'';
     const code  = localStorage.getItem('ingresou_key')||'';
@@ -122,66 +162,64 @@ async function grade(){
   }catch(_){}
 }
 
+/* Generar examen (pide calidad STRICT y dificultad HARD por defecto) */
 async function generate(params){
   const btn = document.getElementById('btnGen');
-  if(btn){ btn.disabled = true; btn.textContent = 'Generando...'; }
+  const msg = document.getElementById('genMsg');
+  if(btn){ btn.disabled = true; btn.textContent = 'Generando...'; msg.textContent = 'Generando…'; }
+
   const count = Math.max(5, Math.min(30, parseInt((params?.count ?? document.getElementById('count').value)||10,10)));
-  const difficulty = (params?.difficulty ?? document.getElementById('difficulty').value);
+  const uiDiff = (params?.difficulty ?? document.getElementById('difficulty').value); // lo que selecciona el usuario
+  // Si el usuario elige "mixta", forzamos hard (mejor calidad). Si elige otra, la respetamos.
+  const difficulty = (uiDiff==='mixed' ? 'hard' : uiDiff);
   const variant = (params?.variant ?? Date.now()%1e6);
   const time = parseInt(params?.time ?? 1800,10);
 
   try{
     const r = await fetch('/api/generate-exam', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ count_per_section: count, difficulty: difficulty==='mixed'?undefined:difficulty, variant, time_limit_seconds: time })
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        count_per_section: count,
+        difficulty,                 // -> 'hard' si venía 'mixed'
+        variant,
+        time_limit_seconds: time,
+        quality: 'strict'           // pedimos IA estricta en el ensamblador
+      })
     });
     const d = await r.json();
-    // dentro de function generate(params) { ... }
-try{
-  const r = await fetch('/api/generate-exam', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ count_per_section: count, difficulty: difficulty==='mixed'?undefined:difficulty, variant, time_limit_seconds: time })
-  });
-  const d = await r.json();
-  if(d.ok){
-    EXAM = d.exam;
-    document.getElementById('seed').textContent = 'seed='+EXAM.seed+' · dificultad='+EXAM.difficulty;
-
-    // NUEVO: banner de calidad
-    const ratio = (d.meta && typeof d.meta.ai_ratio==='number') ? d.meta.ai_ratio : 0;
-    const msgEl = document.getElementById('genMsg');
-    if(ratio >= 0.5){
-      msgEl.innerHTML = `Calidad: <strong>IA</strong> (${Math.round(ratio*100)}% IA)`;
-    }else{
-      msgEl.innerHTML = `Calidad: <strong>Básico</strong> (pocas preguntas IA).`;
-    }
-
-    renderExam(); startTimer();
-  }else{
-    document.getElementById('wrap').textContent='No se pudo generar el examen. Intenta de nuevo.';
-  }
-}catch{
-  document.getElementById('wrap').textContent='Error de red.';
-}finally{
-  if(btn){ btn.disabled = false; btn.textContent = 'Generar examen'; }
-}
 
     if(d.ok){
       EXAM = d.exam;
+      // Meta de calidad
+      const ratio = (d.meta && typeof d.meta.ai_ratio==='number') ? d.meta.ai_ratio : 0;
+      if(ratio >= 0.5){
+        msg.innerHTML = `Calidad: <strong>IA</strong> (${Math.round(ratio*100)}% IA)`;
+      }else{
+        // esto indica que se usó bastante fallback (sin IA)
+        msg.innerHTML = `Calidad: <strong>Básico</strong> (bajo % de IA). Si puedes, reintenta en 30–60s.`;
+      }
+
       document.getElementById('seed').textContent = 'seed='+EXAM.seed+' · dificultad='+EXAM.difficulty;
-      renderExam(); startTimer();
+      document.getElementById('limit').textContent = fmt(EXAM.time_limit_seconds||1800);
+      renderExam();
+      startTimer();
     }else{
       document.getElementById('wrap').textContent='No se pudo generar el examen. Intenta de nuevo.';
+      msg.textContent = d.error ? ('Error: '+d.error) : 'No se pudo generar.';
     }
-  }catch{
+  }catch(e){
     document.getElementById('wrap').textContent='Error de red.';
+    msg.textContent = 'Error de red.';
   }finally{
     if(btn){ btn.disabled = false; btn.textContent = 'Generar examen'; }
   }
 }
+
+/* Botón manual */
 document.getElementById('btnGen').onclick = ()=>generate();
 
-// --- AUTOSTART POR QUERY ?autostart=1&count=10&difficulty=mixed&time=1800&variant=123 ---
+/* AUTOSTART por query: ?autostart=1&count=10&difficulty=mixed&time=1800&variant=123 */
 (function(){
   const qs = new URLSearchParams(location.search);
   if(qs.get('autostart')==='1'){
@@ -191,7 +229,7 @@ document.getElementById('btnGen').onclick = ()=>generate();
       time: parseInt(qs.get('time')||'1800',10),
       variant: parseInt(qs.get('variant')|| (Date.now()%1e6),10)
     };
-    // setea controles visuales
+    // reflejar en UI
     document.getElementById('count').value = p.count;
     document.getElementById('difficulty').value = p.difficulty;
     document.getElementById('limit').textContent = (p.time/60)+':00';
@@ -199,4 +237,6 @@ document.getElementById('btnGen').onclick = ()=>generate();
   }
 })();
 </script>
-</body></html>
+</body>
+</html>
+
