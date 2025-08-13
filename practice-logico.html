@@ -1,119 +1,104 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>IngresoU – Razonamiento Lógico</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:900px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
-    .muted{color:#475569}
-    nav a{margin-right:12px}
-    button{padding:10px 14px;border:0;border-radius:10px;background:#0ea5e9;color:#fff;font-weight:600;cursor:pointer}
-    button:disabled{background:#94a3b8;cursor:not-allowed}
-    label{display:block;margin:6px 0}
-  </style>
-</head>
-<body>
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Práctica – Razonamiento Lógico</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:1000px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
+button{padding:10px 14px;border:0;border-radius:10px;background:#0ea5e9;color:#fff;font-weight:700;cursor:pointer}
+.muted{color:#475569}.ok{color:#059669}.err{color:#dc2626}
+.q{margin:8px 0 14px}
+</style></head><body>
 <header>
   <h1>IngresoU</h1>
-  <nav>
-    <a href="/index.html">Inicio</a>
-    <a href="/premium.html">Premium</a>
-    <a href="/leaderboard.html">Ranking</a>
-  </nav>
+  <nav><a href="/index.html">Inicio</a> · <a href="/premium.html">Premium</a> · <a href="/leaderboard.html">Ranking</a></nav>
 </header>
 
 <div class="card">
-  <h2>Práctica – Razonamiento Lógico</h2>
-  <div id="quizWrap" class="muted">Cargando preguntas...</div>
-  <div class="card">
-    <button id="btnSubmit" disabled>Enviar respuestas</button>
-    <p id="result" class="muted"></p>
-  </div>
+  <h2>Razonamiento Lógico</h2>
+  <p class="muted">10 preguntas. Al enviar verás las explicaciones y tu puntaje.</p>
 </div>
 
+<div id="wrap" class="card">Cargando…</div>
+
 <script>
-const TOPIC = 'logico';
-const FALLBACK = [
-  {q:'Si p ⇒ q y q es falsa, entonces:', choices:['p es verdadera','p es falsa','p no se puede determinar','p y q verdaderas'], a:1},
-  {q:'Serie: 1, 3, 6, 10, ...', choices:['12','13','14','15'], a:2},
-  {q:'Negación de: "Algunos estudian"', choices:['Todos estudian','Nadie estudia','Todos no estudian','Algunos no estudian'], a:3},
-  {q:'Silogismo válido es...', choices:['Falacia','Argumento correcto','Paradoja','Analogía'], a:1},
-  {q:'Analogía: Sol es a día como luna es a...', choices:['noche','estrella','cielo','mar'], a:0},
-  {q:'Conjuntos A⊂B significa...', choices:['A es igual a B','A es subconjunto de B','A no tiene elementos','B es subconjunto de A'], a:1},
-  {q:'SI 2⇒4 y 4⇒8, entonces 2⇒8 es...', choices:['Válido por transitividad','Falso','Contradicción','No se sabe'], a:0},
-  {q:'Verdadero/Falso: (p∧q) ⇒ p', choices:['Verdadero','Falso','Depende','Indeterminado'], a:0},
-  {q:'Si hoy es miércoles, pasado mañana es', choices:['Viernes','Sábado','Domingo','Lunes'], a:0},
-  {q:'2, 5, 9, 14, ... ¿incrementos?', choices:['+3,+4,+5','+2,+3,+5','+1,+2,+3','+4,+5,+6'], a:0},
-];
+const TOPIC='logico';
+let START=Date.now(), QUESTIONS=[];
 
-function getSession(){
-  const email = localStorage.getItem('ingresou_email')||'';
-  const code  = localStorage.getItem('ingresou_key')||'';
-  return {email, code};
+function radio(name, idx, text){ return `<label style="display:block;margin:6px 0"><input type="radio" name="${name}" value="${idx}"> ${text}</label>`; }
+
+function render(list){
+  const html = list.map((q,i)=>{
+    const opts = q.choices.map((c,j)=>radio('q'+i, j, c)).join('');
+    return `<div class="q"><strong>${i+1}. ${q.prompt}</strong>${opts}</div>`;
+  }).join('') + `<button id="btnSend">Enviar respuestas</button> <span id="msg" class="muted"></span>`;
+  document.getElementById('wrap').innerHTML = html;
+  document.getElementById('btnSend').onclick = grade;
 }
 
-let startTime = Date.now();
-let questions = [];
-
-async function loadQuestions(){
-  const sess = getSession();
-  if(!sess.email || !sess.code) location.href='/index.html';
-  try {
-    const res = await fetch('/api/generate-questions', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({topic: TOPIC, count: 10})
-    });
-    const data = await res.json();
-    if(Array.isArray(data.questions)) questions = data.questions;
-    else questions = FALLBACK.map(x=>({question:x.q, choices:x.choices, answer_index:x.a}));
-  } catch(e) {
-    questions = FALLBACK.map(x=>({question:x.q, choices:x.choices, answer_index:x.a}));
-  }
-  renderQuiz();
-}
-
-function renderQuiz(){
-  const wrap = document.getElementById('quizWrap');
-  const items = questions.map(function(q, i){
-    const opts = q.choices.map(function(c,j){
-      return '<label><input type="radio" name="q'+i+'" value="'+j+'"> '+c+'</label>';
-    }).join('<br>');
-    return '<div class="card"><strong>'+(i+1)+'.</strong> '+q.question+'<div style="margin-top:8px">'+opts+'</div></div>';
-  }).join('');
-  wrap.innerHTML = items;
-  document.getElementById('btnSubmit').disabled = false;
-}
-
-async function submit(){
-  const btn = document.getElementById('btnSubmit');
-  if(btn.disabled) return;
-  btn.disabled = true;
-  btn.textContent = 'Enviando...';
-
-  const dur = Math.round((Date.now()-startTime)/1000);
-  let score = 0;
-  questions.forEach(function(q,i){
-    const sel = document.querySelector('input[name="q'+i+'"]:checked');
-    if(sel && Number(sel.value) === Number(q.answer_index)) score++;
+async function grade(){
+  const msg = document.getElementById('msg');
+  let score=0;
+  const res = [];
+  QUESTIONS.forEach((q,i)=>{
+    const sel = document.querySelector(`input[name="q${i}"]:checked`);
+    const v = sel ? parseInt(sel.value,10) : -1;
+    const ok = v===q.answer_index;
+    if(ok) score++;
+    res.push({ok, chosen:v});
   });
+  const dur = Math.round((Date.now()-START)/1000);
 
-  const sess = getSession();
+  const blocks = QUESTIONS.map((q,i)=>{
+    const chosen = res[i].chosen;
+    const ok = res[i].ok;
+    const correctTxt = q.choices[q.answer_index];
+    const chosenTxt = chosen>=0 ? q.choices[chosen] : '—';
+    const expl = q.explanation ? `<div class="muted">Explicación: ${q.explanation}</div>` : '';
+    return `<div class="q"><strong>${i+1}. ${q.prompt}</strong>
+      <div>Tu respuesta: ${ok?'<span class="ok"><strong>'+chosenTxt+'</strong></span>':'<span class="err">'+chosenTxt+'</span>'}</div>
+      <div>Correcta: <strong>${correctTxt}</strong></div>
+      ${expl}
+    </div>`;
+  }).join('');
+
+  document.getElementById('wrap').innerHTML = `<h3>Resultados</h3><p>Puntaje: <strong>${score}/10</strong> · Tiempo: ${dur}s</p>${blocks}`;
+
   try{
-    await fetch('/api/submit-score', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email: sess.email, code: sess.code, topic: TOPIC, score: score, duration: dur})
-    });
-  }catch(e){}
-
-  document.getElementById('result').innerHTML = 'Puntaje: <strong>'+score+'/10</strong> en '+dur+'s';
-  btn.textContent = 'Enviado';
+    const email = localStorage.getItem('ingresou_email')||'';
+    const code  = localStorage.getItem('ingresou_key')||'';
+    if(email && code){
+      await fetch('/api/submit-score',{method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email, code, topic:TOPIC, score, duration:dur })
+      });
+    }
+  }catch(_){}
 }
 
-document.getElementById('btnSubmit').addEventListener('click', submit);
-loadQuestions();
+async function load(){
+  try{
+    const r = await fetch('/api/generate-questions', {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ topic:TOPIC, count:10 })
+    });
+    const d = await r.json();
+    if(d.ok && Array.isArray(d.items) && d.items.length){
+      QUESTIONS = d.items; render(QUESTIONS);
+      return;
+    }
+  }catch(_){}
+  // Fallback simple
+  QUESTIONS = [];
+  for(let i=1;i<=10;i++){
+    const base = i, nxt=i+1, nxt2=i+2, nxt3=i+3;
+    QUESTIONS.push({
+      prompt:`Completa la secuencia: ${base}, ${nxt}, ${nxt2}, __`,
+      choices:[String(nxt3), String(nxt2+2), String(nxt+3)],
+      answer_index:0,
+      explanation:`Secuencia +1: el siguiente es ${nxt3}.`
+    });
+  }
+  render(QUESTIONS);
+}
+load();
 </script>
-</body>
-</html>
+</body></html>
