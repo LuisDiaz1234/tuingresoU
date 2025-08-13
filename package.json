@@ -1,0 +1,16 @@
+{
+  "name": "ingresou-api",
+  "version": "1.0.3",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "node"
+  }
+}
