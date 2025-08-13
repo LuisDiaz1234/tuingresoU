@@ -14,3 +14,9 @@
     "start": "node"
   }
 }
+{
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "openai": "^4.56.0"
+  }
+}
