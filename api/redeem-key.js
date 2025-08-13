@@ -1,4 +1,4 @@
-import { getClient, cors, parseBody, normalizeCode, normalizeEmail } from '../_lib/supaClient.js';
+import { getClient, cors, parseBody, normalizeCode, normalizeEmail } from './_lib/supaClient.js';
 export default async function handler(req, res){
   cors(res);
   if(req.method === 'OPTIONS'){ res.status(200).end(); return; }
