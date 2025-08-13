@@ -1,86 +1,188 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>IngresoU</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:900px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
-    .muted{color:#475569;font-size:.95rem}
-    small.code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:2px 6px}
-    .banner{background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px;margin:10px 0}
-    .hidden{display:none}
-    nav a{margin-right:12px}
-  </style>
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>IngresoU – Panel</title>
+<style>
+:root{
+  --bg:#f6f8fb; --card:#ffffff; --text:#0f172a; --muted:#475569; --brand:#0ea5e9; --brand-2:#0284c7;
+  --line:#e2e8f0; --ok:#059669; --warn:#f59e0b; --err:#dc2626;
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
+a{color:var(--brand-2);text-decoration:none} a:hover{text-decoration:underline}
+.container{max-width:1100px;margin:0 auto;padding:24px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.nav a{margin:0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
+.btn{display:inline-block;background:var(--brand);color:#fff;padding:10px 14px;border-radius:12px;font-weight:700;border:0;cursor:pointer}
+.btn:hover{background:var(--brand-2)}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.grid3,.grid2{grid-template-columns:1fr}}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;background:#eef6ff;color:#1e40af;font-size:12px;border:1px solid #dbeafe}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.muted{color:var(--muted)}
+.input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:12px}
+.label{display:block;font-size:13px;color:var(--muted);margin:8px 0 6px}
+.kv{display:flex;flex-wrap:wrap;gap:16px}
+.kv>div{min-width:180px}
+.hero{display:flex;align-items:center;justify-content:space-between}
+.hero h1{margin:0 0 6px 0}
+.small{font-size:13px}
+</style>
 </head>
 <body>
-<header>
-  <h1>IngresoU</h1>
-  <nav>
-    <a href="/index.html">Inicio</a>
-    <a href="/premium.html">Premium</a>
-    <a href="/leaderboard.html">Ranking</a>
-  </nav>
-</header>
+<div class="container">
+  <header class="header">
+    <div><strong>IngresoU</strong></div>
+    <nav class="nav small">
+      <a href="/index.html">Inicio</a>
+      <a href="/exam.html">Examen</a>
+      <a href="/leaderboard.html">Ranking</a>
+      <a href="/admin.html">Admin</a>
+    </nav>
+  </header>
 
-<div class="card">
-  <h2>Cuenta Premium</h2>
-  <div id="subInfo" class="muted">Cargando...</div>
-  <div class="banner hidden" id="renewalBanner"></div>
-</div>
+  <!-- HERO / BIENVENIDA -->
+  <div class="card hero">
+    <div>
+      <h1 id="hola">Hola 👋</h1>
+      <div class="muted" id="resumen">Bienvenido(a) a tu panel.</div>
+      <div style="margin-top:10px">
+        <button id="btnExamenRapido" class="btn">Examen rápido (30 min)</button>
+        <button id="btnSalir" class="btn" style="background:#e11d48;margin-left:6px">Salir</button>
+      </div>
+    </div>
+    <div>
+      <div class="badge" id="badgePlan">Plan</div>
+    </div>
+  </div>
 
-<div class="card">
-  <h3>Módulos</h3>
-  <ul>
-    <li><a href="/practice-algebra.html">Álgebra</a></li>
-    <li><a href="/practice-logico.html">Razonamiento Lógico</a></li>
-    <li><a href="/practice-lectura.html">Comprensión Lectora</a></li>
-  </ul>
+  <div class="grid2">
+    <!-- EXAMEN RÁPIDO -->
+    <div class="card">
+      <h2 style="margin:0 0 10px 0">Generar examen</h2>
+      <div class="grid2">
+        <div>
+          <label class="label">Dificultad</label>
+          <select id="difficulty">
+            <option value="mixed">Mixta</option>
+            <option value="basic">Básica</option>
+            <option value="medium">Media</option>
+            <option value="hard">Difícil</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Preguntas por sección</label>
+          <input id="count" type="number" class="input" min="5" max="30" value="10"/>
+        </div>
+        <div>
+          <label class="label">Tiempo (min)</label>
+          <select id="time">
+            <option value="30">30</option>
+            <option value="20">20</option>
+            <option value="15">15</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <button id="btnGenerar" class="btn">Iniciar ahora</button>
+        <span class="muted small">Secciones: Álgebra, Lógico, Lectura.</span>
+      </div>
+    </div>
+
+    <!-- SUSCRIPCIÓN -->
+    <div class="card">
+      <h2 style="margin:0 0 10px 0">Tu suscripción</h2>
+      <div class="kv small">
+        <div><div class="muted">Correo</div><div id="infoEmail" class="mono"></div></div>
+        <div><div class="muted">KEY</div><div id="infoCode" class="mono"></div></div>
+        <div><div class="muted">Universidad</div><div id="infoUni"></div></div>
+        <div><div class="muted">Plan</div><div id="infoPlan"></div></div>
+        <div><div class="muted">Vence</div><div id="infoVence"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MÓDULOS -->
+  <div class="card">
+    <h2 style="margin:0 0 8px 0">Prácticas por módulo</h2>
+    <div class="grid3">
+      <div class="card">
+        <h3>Álgebra</h3>
+        <p class="muted small">Ecuaciones, funciones, proporciones…</p>
+        <a class="btn" href="/practice-algebra.html">Practicar</a>
+      </div>
+      <div class="card">
+        <h3>Razonamiento Lógico</h3>
+        <p class="muted small">Secuencias, analogías, silogismos…</p>
+        <a class="btn" href="/practice-logico.html">Practicar</a>
+      </div>
+      <div class="card">
+        <h3>Comprensión Lectora</h3>
+        <p class="muted small">Idea principal, inferencias, vocabulario…</p>
+        <a class="btn" href="/practice-lectura.html">Practicar</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXTRA -->
+  <div class="card small muted">
+    ¿Problemas? Revisa tu conexión o vuelve a intentarlo. Puedes ver el
+    <a href="/leaderboard.html">ranking</a> o gestionar claves en el <a href="/admin.html">admin</a>.
+  </div>
 </div>
 
 <script>
-const TZ_OPTS = { timeZone: 'America/Panama', hour12: false };
-async function verifyAndRender(){
+(function(){
+  // --- sesión obligatoria ---
   const email = (localStorage.getItem('ingresou_email')||'').toLowerCase();
   const code  = (localStorage.getItem('ingresou_key')||'').toUpperCase();
-  if(!email || !code){ location.href = '/index.html'; return; }
+  const uni   = localStorage.getItem('ingresou_university')||'';
+  const plan  = localStorage.getItem('ingresou_plan')||'';
+  const exp   = localStorage.getItem('ingresou_expires_at')||'';
 
-  const res = await fetch('/api/get-subscription', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({email, code})
-  });
-  const data = await res.json();
-  if(!data.ok){
-    document.getElementById('subInfo').innerHTML = '<span style="color:#dc2626">No válido: '+data.error+'</span>';
+  if(!email || !code){
+    // sin sesión → a login
+    location.href = '/index.html';
     return;
   }
-  const s = data.subscription;
-  const lines = [
-    '<strong>Correo:</strong> '+email,
-    '<strong>KEY:</strong> <small class="code">'+code+'</small>',
-    '<strong>Universidad:</strong> '+(s.university||'-'),
-    '<strong>Plan:</strong> '+(s.plan||'-'),
-    '<strong>Vence:</strong> '+new Date(s.expires_at).toLocaleString('es-PA', TZ_OPTS)
-  ];
-  document.getElementById('subInfo').innerHTML = lines.join('<br>');
 
-  // refresca sesión local
-  localStorage.setItem('ingresou_university', s.university||'');
-  localStorage.setItem('ingresou_plan', s.plan||'');
-  localStorage.setItem('ingresou_expires_at', s.expires_at||'');
+  // UI
+  document.getElementById('hola').textContent = `Hola, ${email.split('@')[0]} 👋`;
+  document.getElementById('resumen').textContent = 'Desde aquí puedes iniciar un examen o practicar por módulo.';
+  document.getElementById('badgePlan').textContent = `${plan||'plan'} • ${uni||'—'}`;
 
-  // banner de renovación
-  const banner = document.getElementById('renewalBanner');
-  banner.dataset.expiresAt = s.expires_at;
-  banner.classList.remove('hidden');
-}
-verifyAndRender().catch(e=>{
-  document.getElementById('subInfo').innerHTML = '<span style="color:#dc2626">'+e.message+'</span>';
-});
+  document.getElementById('infoEmail').textContent = email;
+  document.getElementById('infoCode').textContent  = code;
+  document.getElementById('infoUni').textContent   = uni||'—';
+  document.getElementById('infoPlan').textContent  = plan||'—';
+  document.getElementById('infoVence').textContent = exp? new Date(exp).toLocaleString() : '—';
+
+  // Examen rápido botón grande
+  document.getElementById('btnExamenRapido').onclick = ()=>{
+    const variant = Date.now()%1e6;
+    location.href = `/exam.html?autostart=1&count=10&difficulty=mixed&time=${30*60}&variant=${variant}`;
+  };
+
+  // Examen con parámetros del formulario
+  document.getElementById('btnGenerar').onclick = ()=>{
+    const count = Math.max(5, Math.min(30, parseInt(document.getElementById('count').value||10,10)));
+    const difficulty = document.getElementById('difficulty').value;
+    const mins = parseInt(document.getElementById('time').value,10)||30;
+    const variant = Date.now()%1e6;
+    location.href = `/exam.html?autostart=1&count=${count}&difficulty=${encodeURIComponent(difficulty)}&time=${mins*60}&variant=${variant}`;
+  };
+
+  // salir
+  document.getElementById('btnSalir').onclick = ()=>{
+    localStorage.removeItem('ingresou_email');
+    localStorage.removeItem('ingresou_key');
+    localStorage.removeItem('ingresou_plan');
+    localStorage.removeItem('ingresou_university');
+    localStorage.removeItem('ingresou_expires_at');
+    location.href = '/index.html';
+  };
+})();
 </script>
-<script src="/assets/renewal-banner.js"></script>
-</body>
-</html>
-
+</body></html>
