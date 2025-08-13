@@ -1,19 +1,25 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>IngresoU</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IngresoU – Admin</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:900px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:1000px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
     header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
     .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
-    .muted{color:#475569;font-size:.9rem}
     label{display:block;margin:8px 0 4px}
     input,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px}
     button{padding:10px 14px;border:0;border-radius:10px;background:#0ea5e9;color:#fff;font-weight:600;cursor:pointer}
+    button:disabled{background:#94a3b8;cursor:not-allowed}
+    .muted{color:#475569}
+    .ok{color:#059669}.err{color:#dc2626}
+    nav a{margin-right:12px}
     table{width:100%;border-collapse:collapse}
     th,td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left}
+    small.code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:2px 6px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media (max-width:800px){ .grid{grid-template-columns:1fr;} }
   </style>
 </head>
 <body>
@@ -25,66 +31,128 @@
     <a href="/leaderboard.html">Ranking</a>
   </nav>
 </header>
+
 <div class="card">
   <h2>Admin – emitir / ver keys</h2>
-  <p class="muted">Usa un <strong>ADMIN_TOKEN</strong> para operar. (No compartas este token)</p>
+  <p class="muted">Requiere <strong>ADMIN_TOKEN</strong>. No compartas este token.</p>
   <label>ADMIN_TOKEN</label>
   <input id="adminToken" placeholder="pégalo aquí">
+  <p id="tokStatus" class="muted"></p>
 </div>
-<div class="card">
-  <h3>Emitir nueva KEY</h3>
-  <label>Code</label><input id="code" placeholder="UTP-XXXX-0001">
-  <label>Plan</label><input id="plan" placeholder="mensual">
-  <label>Universidad</label>
-  <select id="university"><option>UTP</option><option>UP</option></select>
-  <label>Expira (ISO 8601)</label><input id="expires_at" placeholder="2025-12-31T23:59:59Z">
-  <button id="btnIssue">Emitir</button>
-  <p id="issueStatus" class="muted"></p>
+
+<div class="grid">
+  <div class="card">
+    <h3>Emitir nueva KEY</h3>
+    <label>Code</label><input id="code" placeholder="UTP-XXXX-0001">
+    <label>Plan</label><input id="plan" placeholder="mensual" value="mensual">
+    <label>Universidad</label>
+    <select id="university"><option>UTP</option><option>UP</option></select>
+    <label>Expira (ISO 8601)</label><input id="expires_at" placeholder="2025-12-31T23:59:59Z">
+    <div style="margin-top:12px">
+      <button id="btnIssue">Emitir</button>
+    </div>
+    <p id="issueStatus" class="muted"></p>
+  </div>
+
+  <div class="card">
+    <h3>Listado de keys</h3>
+    <label>Filtro texto (code/email)</label><input id="q" placeholder="UTP-">
+    <label>Redimidas</label>
+    <select id="redeemed"><option value="">Todas</option><option value="1">Sí</option><option value="0">No</option></select>
+    <label>Universidad</label>
+    <select id="u"><option value="">Todas</option><option>UTP</option><option>UP</option></select>
+    <div style="margin-top:12px">
+      <button id="btnList">Listar</button>
+    </div>
+    <div id="listWrap" class="muted" style="margin-top:10px">—</div>
+  </div>
 </div>
-<div class="card">
-  <h3>Listado de keys</h3>
-  <label>Filtro texto (code/email)</label><input id="q" placeholder="UTP-">
-  <label>Redimidas</label>
-  <select id="redeemed"><option value="">Todas</option><option value="1">Sí</option><option value="0">No</option></select>
-  <label>Universidad</label>
-  <select id="u"><option value="">Todas</option><option>UTP</option><option>UP</option></select>
-  <button id="btnList">Listar</button>
-  <div id="listWrap" class="muted">—</div>
-</div>
+
 <script>
+const TZ_OPTS = { timeZone: 'America/Panama', hour12: false };
+
 function authHeaders(){
-  const tok = document.getElementById('adminToken').value.trim();
-  return tok ? {'Authorization':'Bearer '+tok, 'Content-Type':'application/json'} : {'Content-Type':'application/json'};
+  const tok = (document.getElementById('adminToken').value || '').trim();
+  if(!tok) return null;
+  return {'Authorization':'Bearer '+tok, 'Content-Type':'application/json'};
 }
-document.getElementById('btnIssue').addEventListener('click', async ()=>{
-  const payload = {
-    code: document.getElementById('code').value,
-    plan: document.getElementById('plan').value,
-    university: document.getElementById('university').value,
-    expires_at: document.getElementById('expires_at').value
-  };
-  const res = await fetch('/api/admin/issue-key', {method:'POST', headers: authHeaders(), body: JSON.stringify(payload)});
-  const data = await res.json();
-  document.getElementById('issueStatus').textContent = JSON.stringify(data);
+function setBusy(btn, busy, idle, busyTxt){
+  btn.disabled = !!busy;
+  btn.textContent = busy ? (busyTxt||'Procesando...') : (idle||'Enviar');
+}
+document.getElementById('adminToken').addEventListener('input', ()=>{
+  const tok = (document.getElementById('adminToken').value || '').trim();
+  document.getElementById('tokStatus').textContent = tok ? 'Token listo.' : 'Pega tu ADMIN_TOKEN.';
 });
+
+document.getElementById('btnIssue').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btnIssue');
+  const headers = authHeaders();
+  if(!headers){ document.getElementById('issueStatus').innerHTML = '<span class="err">Falta ADMIN_TOKEN</span>'; return; }
+  const payload = {
+    code: (document.getElementById('code').value||'').toUpperCase().trim(),
+    plan: (document.getElementById('plan').value||'').trim(),
+    university: (document.getElementById('university').value||'').trim().toUpperCase(),
+    expires_at: (document.getElementById('expires_at').value||'').trim()
+  };
+  if(!payload.code || !payload.plan || !payload.university || !payload.expires_at){
+    document.getElementById('issueStatus').innerHTML = '<span class="err">Completa todos los campos.</span>'; return;
+  }
+  try{
+    setBusy(btn,true,'Emitir','Emitiendo...');
+    const res = await fetch('/api/admin/issue-key',{method:'POST', headers, body: JSON.stringify(payload)});
+    const data = await res.json();
+    if(!data.ok){
+      document.getElementById('issueStatus').innerHTML = '<span class="err">'+(data.error||'Error')+'</span>';
+    }else{
+      document.getElementById('issueStatus').innerHTML = '<span class="ok">OK: KEY emitida</span>';
+    }
+  }catch(e){
+    document.getElementById('issueStatus').innerHTML = '<span class="err">'+e.message+'</span>';
+  }finally{
+    setBusy(btn,false,'Emitir');
+  }
+});
+
 document.getElementById('btnList').addEventListener('click', async ()=>{
-  const params = new URLSearchParams();
-  const q = document.getElementById('q').value.trim();
-  const redeemed = document.getElementById('redeemed').value;
-  const u = document.getElementById('u').value;
-  if(q) params.set('q', q);
-  if(redeemed !== '') params.set('redeemed', redeemed);
-  if(u) params.set('university', u);
-  const res = await fetch('/api/admin/issue-key?'+params.toString(), {headers: authHeaders()});
-  const data = await res.json();
-  if(!data.ok){ document.getElementById('listWrap').textContent = JSON.stringify(data); return; }
-  if(!Array.isArray(data.items) || data.items.length===0){ document.getElementById('listWrap').textContent = 'Sin resultados.'; return; }
-  const rows = data.items.map(k=>`<tr>
-    <td>${k.code}</td><td>${k.plan}</td><td>${k.university}</td>
-    <td>${k.expires_at}</td><td>${k.redeemed?'sí':'no'}</td><td>${k.redeemed_by_email||'-'}</td>
-  </tr>`).join('');
-  document.getElementById('listWrap').innerHTML = '<table><thead><tr><th>Code</th><th>Plan</th><th>Univ</th><th>Expira</th><th>Redimida</th><th>Email</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  const btn = document.getElementById('btnList');
+  const headers = authHeaders();
+  if(!headers){ document.getElementById('listWrap').innerHTML = '<span class="err">Falta ADMIN_TOKEN</span>'; return; }
+  try{
+    setBusy(btn,true,'Listar','Buscando...');
+    const params = new URLSearchParams();
+    const q = (document.getElementById('q').value||'').trim();
+    const redeemed = document.getElementById('redeemed').value;
+    const u = document.getElementById('u').value;
+    if(q) params.set('q', q);
+    if(redeemed !== '') params.set('redeemed', redeemed);
+    if(u) params.set('university', u);
+    const res = await fetch('/api/admin/issue-key?'+params.toString(), {headers});
+    const data = await res.json();
+    if(!data.ok){
+      document.getElementById('listWrap').innerHTML = '<span class="err">'+(data.error||'Error')+'</span>';
+      return;
+    }
+    if(!Array.isArray(data.items) || data.items.length===0){
+      document.getElementById('listWrap').textContent = 'Sin resultados.'; return;
+    }
+    const rows = data.items.map(k=>`<tr>
+      <td><small class="code">${k.code}</small></td>
+      <td>${k.plan}</td>
+      <td>${k.university}</td>
+      <td>${new Date(k.expires_at).toLocaleString('es-PA', TZ_OPTS)}</td>
+      <td>${k.redeemed?'sí':'no'}</td>
+      <td>${k.redeemed_by_email||'-'}</td>
+      <td>${new Date(k.created_at).toLocaleString('es-PA', TZ_OPTS)}</td>
+    </tr>`).join('');
+    document.getElementById('listWrap').innerHTML =
+      '<table><thead><tr><th>Code</th><th>Plan</th><th>Univ</th><th>Expira (PA)</th><th>Redimida</th><th>Email</th><th>Creada (PA)</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  }catch(e){
+    document.getElementById('listWrap').innerHTML = '<span class="err">'+e.message+'</span>';
+  }finally{
+    setBusy(btn,false,'Listar');
+  }
 });
 </script>
-<script src="/assets/renewal-banner.js"></script>
-</body></html>
+</body>
+</html>
