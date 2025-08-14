@@ -1,133 +1,59 @@
 (function(){
-  const $ = (sel, el=document) => el.querySelector(sel);
-  const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+  const $ = (s,el=document)=>el.querySelector(s);
+  const $$= (s,el=document)=>Array.from(el.querySelectorAll(s));
 
-  // Estado de config
   let CONFIG = {
-    currency: 'USD',
-    yappy_display_name: 'IngresoU',
-    yappy_phone: '+50760000000',
-    prices: { mensual_cents: 599, trimestral_cents: 1499, anual_cents: 3999 }
+    currency:'PAB',
+    yappy_display_name:'IngresoU',
+    yappy_phone:'+50760000000',
+    prices:{mensual_cents:999,trimestral_cents:2499,anual_cents:6900}
   };
 
   async function loadConfig(){
     try{
-      const r = await fetch('/api/public-config');
+      const r = await fetch('/api/public-config',{cache:'no-store'});
       const j = await r.json();
-      if(j && j.ok){
-        CONFIG = { ...CONFIG, ...j, prices: { ...CONFIG.prices, ...j.prices } };
-      }
-    }catch(e){ /* fallback */ }
-    renderPrices();
+      if(j && j.ok) CONFIG = {...CONFIG, ...j, prices:{...CONFIG.prices, ...j.prices}};
+    }catch(_){}
+    paintPrices();
+  }
+  function money(cents,ccy){ return (Number(cents||0)/100).toLocaleString('es-PA',{style:'currency',currency:ccy||CONFIG.currency}); }
+  function paintPrices(){
+    const m=$('#price-mensual');  if(m) m.textContent=money(CONFIG.prices.mensual_cents,CONFIG.currency);
+    const t=$('#price-trimestral');if(t) t.textContent=money(CONFIG.prices.trimestral_cents,CONFIG.currency);
+    const a=$('#price-anual');    if(a) a.textContent=money(CONFIG.prices.anual_cents,CONFIG.currency);
   }
 
-  function money(cents, ccy){
-    const n = Number.isFinite(cents) ? cents/100 : cents;
-    return new Intl.NumberFormat('es-PA',{ style:'currency', currency:ccy || CONFIG.currency }).format(n);
-  }
-
-  function renderPrices(){
-    const m = $('#price-mensual');  if(m) m.textContent = money(CONFIG.prices.mensual_cents, CONFIG.currency);
-    const t = $('#price-trimestral');if(t) t.textContent = money(CONFIG.prices.trimestral_cents, CONFIG.currency);
-    const a = $('#price-anual');    if(a) a.textContent = money(CONFIG.prices.anual_cents, CONFIG.currency);
-  }
-
-  // Modal compra (WhatsApp/Yappy)
   function openBuy(plan){
-    const modal = $('#buy-modal'); if(!modal) return;
-    const phone = CONFIG.yappy_phone || '+50760000000';
-    const planName = plan || 'mensual';
-    const priceCents = CONFIG.prices[`${planName}_cents`] || 0;
-    const priceText = money(priceCents, CONFIG.currency);
-    $('#buy-plan').textContent = planName.toUpperCase();
-    $('#buy-amount').textContent = priceText;
-    $('#buy-display').textContent = CONFIG.yappy_display_name;
+    const modal = $('.modal-backdrop'); if(!modal) return;
+    const cents = plan==='anual' ? CONFIG.prices.anual_cents
+                : plan==='trimestral' ? CONFIG.prices.trimestral_cents
+                : CONFIG.prices.mensual_cents;
+    $('#buy-plan').textContent = plan.toUpperCase();
+    $('#buy-amount').textContent = money(cents, CONFIG.currency);
+    $('#buy-display').textContent = CONFIG.yappy_display_name||'IngresoU';
     const email = (localStorage.getItem('ingresou_email')||'').toLowerCase();
     $('#buy-email').value = email;
-
-    const msg = encodeURIComponent(
-      `Hola, quiero comprar el plan ${planName.toUpperCase()} (${priceText}) para IngresoU. `+
-      `Mi correo: ${email||'(escribe tu correo aquí)'}`
-    );
-    const wa = `https://wa.me/${phone.replace(/[^\d]/g,'')}?text=${msg}`;
+    const msg = encodeURIComponent(`Hola, quiero comprar el plan ${plan.toUpperCase()} (${money(cents,CONFIG.currency)}) para IngresoU. Mi correo: ${email||'(escribe tu correo aquí)'}`);
+    const wa  = `https://wa.me/${(CONFIG.yappy_phone||'+50760000000').replace(/[^\d]/g,'')}?text=${msg}`;
     $('#buy-wa').setAttribute('href', wa);
-    $('.modal-backdrop').style.display = 'flex';
+    modal.style.display = 'flex';
   }
-  function closeBuy(){ $('.modal-backdrop').style.display = 'none'; }
+  function closeBuy(){ const m=$('.modal-backdrop'); if(m) m.style.display='none'; }
 
-  // Exponer a botones
-  window.IngresoU = {
-    openBuy, closeBuy
-  };
+  function haveSession(){ return !!(localStorage.getItem('ingresou_email') && localStorage.getItem('ingresou_key')); }
+  function scrollToLogin(){ const f=$('#login-form'); if(f){ f.scrollIntoView({behavior:'smooth'}); $('#login-code')?.focus(); } }
 
-  // Nav chips de presets
-  function haveSession(){
-  return !!(localStorage.getItem('ingresou_email') && localStorage.getItem('ingresou_key'));
-}
-function scrollToLogin(){
-  const form = document.getElementById('login-form');
-  if(form){ form.scrollIntoView({behavior:'smooth',block:'start'}); }
-}
-$$('[data-preset]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const mode = btn.getAttribute('data-preset');
-    if(haveSession()){
-      window.location.href = `/exam.html?mode=${encodeURIComponent(mode)}`;
-    }else{
-      // marca el campo y lleva al login
-      const code = document.getElementById('login-code');
-      if(code){ code.focus(); code.placeholder = 'Necesitas iniciar sesión'; }
-      scrollToLogin();
-    }
+  // Presets (si no sesión, scrollean al login)
+  $$('[data-preset]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const mode=btn.getAttribute('data-preset');
+      if(haveSession()) location.href=`/exam.html?mode=${encodeURIComponent(mode)}`;
+      else scrollToLogin();
+    });
   });
-});
 
+  window.IngresoU = { openBuy, closeBuy };
 
-  // Login quick inline (si falla el asset oficial)
-  //  - Normaliza code/email
-  //  - Auto-redeem si NOT_REDEEMED
-  async function quickLogin(e){
-    e.preventDefault?.();
-    const email = ($('#login-email')?.value||'').trim().toLowerCase();
-    const code  = ($('#login-code')?.value||'').trim().toUpperCase();
-    const out = $('#login-out');
-    const say = (m,bad=false)=>{ if(out){ out.textContent=m; out.className='inline-note '+(bad?'bad':'good'); } };
-
-    if(!email || !code){ return say('Completa correo y KEY.', true); }
-
-    try{
-      const send = async (url, body) => {
-        const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        return r.json();
-      };
-      let r = await send('/api/get-subscription',{ email, code });
-      if(!r.ok && r.error === 'NOT_REDEEMED'){
-        const rr = await send('/api/redeem-key',{ email, code });
-        if(rr.ok){ r = await send('/api/get-subscription',{ email, code }); }
-      }
-      if(r.ok && r.subscription){
-        const s = r.subscription;
-        localStorage.setItem('ingresou_email', email);
-        localStorage.setItem('ingresou_key', code);
-        localStorage.setItem('ingresou_plan', s.plan||'mensual');
-        localStorage.setItem('ingresou_university', s.university||'');
-        localStorage.setItem('ingresou_expires_at', s.expires_at||'');
-        say('¡Listo! Redirigiendo…');
-        setTimeout(()=> location.href='/premium.html', 300);
-      }else{
-        const msg = r?.error || 'Error de acceso';
-        say(msg, true);
-      }
-    }catch(err){
-      say('No se pudo conectar. Intenta de nuevo.', true);
-    }
-  }
-
-  // Hook al form
-  const f = $('#login-form');
-  if(f){ f.addEventListener('submit', quickLogin); }
-
-  // Carga de precios
   loadConfig();
-
 })();
