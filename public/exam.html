@@ -1,360 +1,386 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <script>
-  (function(){
-    const email = localStorage.getItem('ingresou_email');
-    const code  = localStorage.getItem('ingresou_key');
-    if(!email || !code){
-      // Te regreso al inicio y guardo a dónde querías ir
-      location.href = '/index.html?next=' + encodeURIComponent(location.pathname + location.search);
-    }
-  })();
-</script>
-
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>IngresoU – Examen</title>
+  <title>Simulador — IngresoU</title>
+
+  <!-- Tu hoja base (si la tienes) -->
+  <link rel="stylesheet" href="/assets/styles.css"/>
+
+  <!-- ===== Estilos Bonito Mode (embebidos) ===== -->
   <style>
     :root{
-      --bg:#f8fafc; --card:#ffffff; --line:#e2e8f0; --text:#0f172a; --muted:#475569;
-      --brand:#0ea5e9; --brand-2:#0284c7; --ok:#059669; --err:#dc2626;
+      --bg:#0b1220; --card:#0e1620; --line:#1f2a37; --txt:#dce7f5;
+      --brand:#3bb2f6; --brand-2:#1d9bf0;
     }
-    *{box-sizing:border-box}
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;margin:0;background:var(--bg);color:var(--text)}
-    a{color:var(--brand-2);text-decoration:none}
-    a:hover{text-decoration:underline}
-    header{max-width:1100px;margin:0 auto;padding:20px 24px;display:flex;justify-content:space-between;align-items:center}
-    .container{max-width:1100px;margin:0 auto;padding:0 24px 24px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    @media(max-width:900px){.grid2{grid-template-columns:1fr}}
-    .btn{display:inline-block;background:var(--brand);color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
-    .btn.sec{background:#10b981}
-    .btn:disabled{background:#cbd5e1;cursor:not-allowed}
-    .input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:12px}
-    .label{display:block;font-size:13px;color:var(--muted);margin:8px 0 6px}
-    .badge{display:inline-block;padding:2px 10px;border-radius:999px;background:#eef2ff;border:1px solid #e0e7ff;color:#3730a3;font-size:12px}
-    .muted{color:var(--muted)} .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-    .timer{font-weight:800}
-    .q{margin:10px 0 18px}
-    .ok{color:var(--ok)} .err{color:var(--err)}
-    .chip{display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:6px 10px;margin:4px 6px 0 0;cursor:pointer}
-    .chip:hover{background:#e2e8f0}
+    body{ background:#070d19; color:var(--txt); }
+    .container{ max-width:1060px; margin:0 auto; padding:22px 16px; }
+    .row{ display:flex; align-items:center; }
+    .header{ position:sticky; top:0; z-index:5; backdrop-filter:saturate(140%) blur(6px);
+      background:linear-gradient(180deg, rgba(7,13,25,.92), rgba(7,13,25,.82));
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .header .brand{ font-weight:800; font-size:1.25rem; letter-spacing:.3px }
+    .nav a{ color:#cfe7ff; text-decoration:none; margin:0 10px; padding:6px 8px; border-radius:8px }
+    .nav a:hover{ background:rgba(255,255,255,.06) }
+    .nav a.active{ color:#fff; background:rgba(59,178,246,.18); border:1px solid rgba(59,178,246,.35) }
+    .btn{ display:inline-flex; gap:8px; align-items:center; border:1px solid rgba(255,255,255,.12);
+      padding:10px 14px; border-radius:10px; color:#e8f4ff; text-decoration:none; cursor:pointer;
+      background:rgba(255,255,255,.03);
+    }
+    .btn:hover{ background:rgba(255,255,255,.06) }
+    .btn.brand{ background:var(--brand); color:#07131e; border:0; font-weight:700 }
+    .btn.brand:hover{ filter:brightness(1.06) }
+    .btn.ghost{ background:transparent; border-color:rgba(255,255,255,.18) }
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      background: rgba(59,178,246,.12); color:#cde9ff;
+      border:1px solid rgba(59,178,246,.35);
+      padding:6px 10px; border-radius:999px; font-size:.9rem;
+    }
+    @keyframes pop{0%{transform:scale(.9);opacity:.6}100%{transform:scale(1);opacity:1}}
+
+    .section{ margin:18px 0 }
+    .card{
+      background: var(--card); border:1px solid var(--line);
+      border-radius:16px; box-shadow:0 6px 16px rgba(0,0,0,.22);
+    }
+    .pad{ padding:16px }
+    .sec{ padding:12px 0 }
+    .sec-head{ display:flex; align-items:center; gap:10px; justify-content:space-between }
+    .chips{ display:flex; flex-wrap:wrap; gap:8px }
+    .chip{ padding:8px 12px; border-radius:999px; border:1px solid var(--line);
+      background:#08111f; cursor:pointer; color:#cfe7ff; font-weight:600; }
+    .chip:hover{ border-color:rgba(59,178,246,.45); background:rgba(59,178,246,.08) }
+
+    /* ===== Bonito Mode examen ===== */
+    .section-title{ margin:12px 0 6px; font-weight:800; }
+    .q-card{ background: #0e1620; border:1px solid #1f2a37; border-radius:14px;
+      padding:16px; margin:12px 0; box-shadow: 0 6px 14px rgba(0,0,0,.18); }
+    .q-title{ font-weight:700; margin-bottom:8px; }
+    .opts{ display:grid; gap:10px; }
+    .opt{
+      display:flex; align-items:center; gap:10px;
+      background:#0b1220; border:1px solid #1f2a37; color:#dce7f5;
+      border-radius:12px; padding:12px 14px; cursor:pointer;
+      transition: transform .08s ease, box-shadow .08s ease, border-color .12s ease, background .12s ease;
+    }
+    .opt:hover{ transform: translateY(-1px); box-shadow:0 8px 18px rgba(0,0,0,.2); }
+    .opt.sel{ border-color:#3bb2f6; background: rgba(59,178,246,.1); box-shadow: 0 0 0 2px rgba(59,178,246,.25) inset; }
+    .opt input[type=radio]{ display:none }
+
+    .inline-note{ padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); display:inline-block }
+    .inline-note.bad{ background:rgba(227,76,86,.08); border-color:rgba(227,76,86,.35); color:#ffd2d6 }
+
+    .table-wrap{ overflow:auto; }
+    .small{ font-size:.92rem; opacity:.88 }
   </style>
 </head>
 <body>
- 
-<script src="/assets/onboarding.js"></script>
 
-<header>
-  <h1 style="margin:0">IngresoU</h1>
-  <nav class="muted">
-    <a href="/index.html">Inicio</a> ·
-    <a href="/premium.html">Premium</a> ·
-    <a href="/leaderboard.html">Ranking</a>
-  </nav>
+<header class="header">
+  <div class="container row" style="gap:16px">
+    <div class="brand">IngresoU</div>
+    <nav class="nav">
+      <a href="/index.html">Inicio</a>
+      <a href="/premium.html">Premium</a>
+      <a href="/leaderboard.html">Ranking</a>
+      <a class="active" href="/exam.html">Examen</a>
+    </nav>
+  </div>
 </header>
 
-<div class="container">
-
-  <!-- PRESSETS -->
-  <div class="card">
-    <h2 style="margin:0 0 10px 0">Simuladores oficiales</h2>
-    <div class="muted" style="margin-bottom:8px">Elige un preset y comenzamos de una vez. Los bancos salen de la base de datos.</div>
-    <div>
-      <span class="chip" onclick="startPreset('paa')">PAA (UTP) – 2 secciones, 60+60 min</span>
-      <span class="chip" onclick="startPreset('pca')">PCA (UP) – 2 secciones, 120 min</span>
-      <span class="chip" onclick="startPreset('pcg')">PCG (UP) – 4 secciones, 120 min</span>
+<main class="container">
+  <!-- Simuladores oficiales -->
+  <section class="section">
+    <div class="card pad">
+      <h2>Simuladores oficiales</h2>
+      <p class="small">Elige un preset y comenzamos de una vez. Los bancos salen de la base de datos.</p>
+      <div class="chips" id="preset-chips">
+        <button class="chip" data-mode="paa">PAA (UTP) — 2 secciones, 60+60 min</button>
+        <button class="chip" data-mode="pca">PCA (UP) — 2 secciones, 120 min</button>
+        <button class="chip" data-mode="pcg">PCG (UP) — 4 secciones, 120 min</button>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- PERSONALIZADO -->
-  <div class="card">
-    <h2 style="margin:0 0 10px 0">Examen personalizado</h2>
-    <div class="grid2">
-      <div>
-        <label class="label">Dificultad</label>
-        <select id="difficulty">
-          <option value="basic">Básica</option>
-          <option value="medium" selected>Media</option>
-          <option value="hard">Difícil</option>
-        </select>
-        <label class="label">Preguntas por sección</label>
-        <input id="count" class="input" type="number" min="5" max="30" value="10"/>
-        <div style="margin-top:10px">
-          <button id="btnGen" class="btn">Generar examen</button>
+  <!-- Examen custom -->
+  <section class="section">
+    <div class="card pad">
+      <div class="sec-head">
+        <h2>Examen personalizado</h2>
+        <div>
+          <span class="pill">Tiempo total: <b id="total-time">—</b></span>
+          <span class="pill">Tiempo restante: <b id="left-time">—</b></span>
         </div>
-        <p id="msg" class="muted" style="margin:10px 0 0">
-          Secciones (personalizado): Álgebra, Razonamiento Lógico y Comprensión Lectora.
-        </p>
       </div>
-      <div>
-        <div>Tiempo total: <span id="limit" class="badge">30:00</span></div>
-        <div>Tiempo restante: <span id="timer" class="timer">—</span></div>
-        <div class="muted mono" id="seed"></div>
+
+      <div class="sec row" style="gap:14px; flex-wrap:wrap">
+        <div>
+          <div class="small">Dificultad</div>
+          <select id="difficulty" class="btn">
+            <option value="easy">Baja</option>
+            <option value="medium" selected>Media</option>
+            <option value="hard">Alta</option>
+            <option value="mixed">Mixta</option>
+          </select>
+        </div>
+        <div>
+          <div class="small">Preguntas por sección</div>
+          <input id="count-per" class="btn" type="number" min="5" max="100" value="10" style="width:120px">
+        </div>
+        <button id="btn-gen" class="btn brand">Generar examen</button>
       </div>
+
+      <div id="sim-info" class="small"></div>
     </div>
-  </div>
+  </section>
 
-  <div id="wrap" class="card">Elige un preset o genera un examen personalizado.</div>
+  <!-- Contenido del examen -->
+  <section class="section">
+    <div class="card pad" id="exam-root">
+      <div class="inline-note">Aún no has generado el examen.</div>
+    </div>
+  </section>
+</main>
 
-</div>
-
+<!-- ===== JS: lógica de examen (usa /api/generate-exam; fallback a /api/generate-questions) ===== -->
 <script>
-let EXAM=null, START=0, TICK=null;
-function fmt(sec){ const m=Math.floor(sec/60), s=sec%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+(function(){
+  const $ = (s,el=document)=>el.querySelector(s);
+  const params = new URLSearchParams(location.search);
+  const modeParam = (params.get('mode')||'').toLowerCase();
 
-function renderExam(){
-  if(!EXAM){ document.getElementById('wrap').textContent='Elige un preset o genera un examen.'; return; }
-  const blocks = EXAM.sections.map((sec,si)=>{
-    const qs = sec.items.map((q,qi)=>{
-      const opts = q.choices.map((c,ci)=>(
-        `<label style="display:block;margin:6px 0"><input type="radio" name="s${si}q${qi}" value="${ci}"> ${c}</label>`
-      )).join('');
-      return `<div class="q"><strong>${qi+1}. ${q.prompt}</strong>${opts}</div>`;
-    }).join('');
-    return `<h3 style="margin:12px 0">${sec.title} <span class="badge">${sec.items.length} preguntas</span></h3>${qs}`;
-  }).join('');
-  document.getElementById('wrap').innerHTML =
-    blocks + `<button id="btnSend" class="btn sec">Enviar examen</button> <span id="msg2" class="muted"></span>`;
-  document.getElementById('btnSend').onclick = grade;
-}
+  const state = {
+    mode: modeParam || 'paa',
+    difficulty: 'medium',
+    countPerSection: 10,
+    durationSec: 0,
+    t0: 0,
+    tInt: null,
+    exam: null, // { sections:[{title, questions:[{prompt, choices[], answer_index}]}], seed }
+  };
 
-function startTimer(){
-  const limit = EXAM.time_limit_seconds || 1800;
-  document.getElementById('limit').textContent = fmt(limit);
-  START = Date.now();
-  clearInterval(TICK);
-  TICK = setInterval(()=>{
-    const elapsed = Math.floor((Date.now()-START)/1000);
-    const rem = Math.max(0, limit - elapsed);
-    document.getElementById('timer').textContent = fmt(rem);
-    if(rem<=0){ clearInterval(TICK); grade(); }
-  }, 1000);
-}
+  const timeByMode = (m)=>(
+    m==='paa' ? (60+60)*60 :
+    m==='pca' ? 120*60 :
+    m==='pcg' ? 120*60 : 60*60
+  );
+  const sectionsByMode = (m)=>(
+    m==='paa' ? 2 : m==='pca' ? 2 : m==='pcg' ? 4 : 1
+  );
 
-async function grade(){
-  if(!EXAM) return;
-  clearInterval(TICK);
+  function fmtMMSS(sec){
+    const m = Math.floor(sec/60), s = Math.floor(sec%60);
+    return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
 
-  let score=0, answered=0;
-  const sectionsRes = EXAM.sections.map((sec,si)=>{
-    let local=0;
-    const detail = sec.items.map((q,qi)=>{
-      const sel = document.querySelector(`input[name="s${si}q${qi}"]:checked`);
-      const v = sel ? parseInt(sel.value,10) : -1;
-      const ok = v===q.answer_index;
-      if(ok){ score++; local++; }
-      if(v>=0) answered++;
-      return { ok, chosen:v, correct:q.answer_index, prompt:q.prompt, choices:q.choices, explanation:q.explanation||'' };
-    });
-    return { topic:sec.topic, correct:local, total:sec.items.length, detail };
-  });
+  function applyMode(m){
+    state.mode = m;
+    state.durationSec = timeByMode(m);
+    $('#total-time').textContent = fmtMMSS(state.durationSec);
+    $('#left-time').textContent = '—';
+    $('#sim-info').innerHTML = '';
+    $('#exam-root').innerHTML = '<div class="inline-note">Selecciona dificultad y genera tu examen.</div>';
+    $('#count-per').value = (m==='pcg'? 10 : 10);
+  }
 
-  const dur = Math.round((Date.now()-START)/1000);
-  const body = `<h3>Resultados</h3>
-    <p>Puntaje total: <strong>${score}/${EXAM.total_questions}</strong> · Contestadas: ${answered}/${EXAM.total_questions} · Tiempo: ${dur}s</p>` +
-    sectionsRes.map((s,idx)=>{
-      const rows = s.detail.map((d,i)=>{
-        const chosenTxt = d.chosen>=0 ? d.choices[d.chosen] : '—';
-        const correctTxt = d.choices[d.correct];
-        return `<div class="q"><strong>${i+1}. ${d.prompt}</strong>
-          <div>Tu respuesta: ${d.ok?'<span class="ok"><strong>'+chosenTxt+'</strong></span>':'<span class="err">'+chosenTxt+'</span>'}</div>
-          <div>Correcta: <strong>${correctTxt}</strong></div>
-          ${d.explanation?('<div class="muted">Explicación: '+d.explanation+'</div>'):''}
-        </div>`;
-      }).join('');
-      return `<h4>Sección ${idx+1}: ${s.topic} — ${s.correct}/${s.total}</h4>${rows}`;
-    }).join('');
-  document.getElementById('wrap').innerHTML = body;
+  async function apiJSON(url, body){
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }
 
-  try{
-    const email = localStorage.getItem('ingresou_email')||'';
-    const code  = localStorage.getItem('ingresou_key')||'';
-    if(email && code){
-      await fetch('/api/submit-score',{method:'POST',headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ email, code, topic:'exam', score, duration: dur })
+  async function generateExam(){
+    const difficulty = $('#difficulty').value;
+    const count = Math.max(5, Math.min(100, Number($('#count-per').value||10)));
+    state.difficulty = difficulty;
+    state.countPerSection = count;
+
+    // 1) Intenta endpoint dedicado
+    try{
+      const j = await apiJSON('/api/generate-exam', {
+        mode: state.mode, difficulty, count_per_section: count, variant: Date.now()%1e6
       });
-    }
-  }catch(_){}
-}
-
-/* --------- GENERADORES --------- */
-
-// EXAM PRESETS (DB-ONLY)
-async function startPreset(mode){
-  const btn = document.getElementById('btnGen');
-  const msg = document.getElementById('msg');
-  if(btn){ btn.disabled = true; btn.textContent = 'Generando...'; }
-  msg.textContent = 'Creando simulacro...';
-
-  try{
-    const r = await fetch('/api/generate-exam', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ mode, source:'db_only' })
-    });
-    const d = await r.json();
-    if(d.ok){
-      EXAM = d.exam;
-      document.getElementById('seed').textContent = `Simulador: ${mode.toUpperCase()} · secciones=${EXAM.sections.length}`;
-      document.getElementById('limit').textContent = fmt(EXAM.time_limit_seconds||1800);
-      renderExam(); startTimer();
-      msg.textContent = `Examen ${mode.toUpperCase()} listo. ¡Éxitos!`;
-    }else{
-      document.getElementById('wrap').textContent='No hay suficientes preguntas en la base. Agrega más en Admin.';
-      msg.textContent = d.error || 'Sin banco suficiente.';
-    }
-  }catch(e){
-    document.getElementById('wrap').textContent='Error de red.';
-    msg.textContent = 'Error de red.';
-  }finally{
-    if(btn){ btn.disabled = false; btn.textContent = 'Generar examen'; }
-  }
-}
-
-// PERSONALIZADO (temas genéricos)
-async function generate(){
-  const btn = document.getElementById('btnGen');
-  const msg = document.getElementById('msg');
-  if(btn){ btn.disabled = true; btn.textContent = 'Generando...'; }
-  msg.textContent = 'Creando examen...';
-
-  const count = Math.max(5, Math.min(30, parseInt(document.getElementById('count').value||10,10)));
-  const difficulty = document.getElementById('difficulty').value;
-  const variant = Date.now()%1e6;
-  const time = 30*60;
-
-  try{
-    const r = await fetch('/api/generate-exam', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        count_per_section: count,
-        difficulty,
-        variant,
-        time_limit_seconds: time
-      })
-    });
-    const d = await r.json();
-    if(d.ok){
-      EXAM = d.exam;
-      document.getElementById('seed').textContent = `Personalizado · dificultad=${difficulty}`;
-      document.getElementById('limit').textContent = fmt(EXAM.time_limit_seconds||1800);
-      renderExam(); startTimer();
-      msg.textContent = 'Examen listo.';
-    }else{
-      document.getElementById('wrap').textContent='No se pudo generar el examen.';
-      msg.textContent = d.error || 'Sin datos.';
-    }
-  }catch(e){
-    document.getElementById('wrap').textContent='Error de red.';
-    msg.textContent = 'Error de red.';
-  }finally{
-    if(btn){ btn.disabled = false; btn.textContent = 'Generar examen'; }
-  }
-}
-
-document.getElementById('btnGen').onclick = generate;
-
-// AUTOSTART (si quisieras lanzar con /exam.html?mode=paa)
-(function(){
-  const qs = new URLSearchParams(location.search);
-  const mode = qs.get('mode');
-  if(mode) startPreset(mode);
-})();
-</script>
-  <script>
-(function(){
-  // Convierte radios + texto suelto en <label class="opt"> … ✓
-  function enhanceRadios(root=document){
-    const radios = root.querySelectorAll('.opts input[type=radio]');
-    radios.forEach(r=>{
-      if(r.dataset.upgraded) return;
-      r.dataset.upgraded = '1';
-
-      if(r.closest('label.opt')) return; // ya está envuelto
-
-      // Leer texto que está después del radio (si tu renderer lo pone así)
-      let txt = '';
-      if(r.nextSibling){
-        txt = (r.nextSibling.textContent || r.nextSibling.nodeValue || '').trim();
+      if (j && j.ok && j.sections?.length){
+        state.exam = j;
+        renderExam();
+        startTimer();
+        $('#sim-info').innerHTML = `Simulador: <b>${state.mode.toUpperCase()}</b> · secciones=<b>${j.sections.length}</b> · seed=${j.seed||'—'}`;
+        return;
       }
-      // Si era nodo de texto, lo removemos para evitar duplicado
-      if(r.nextSibling && r.nextSibling.nodeType === Node.TEXT_NODE){
-        r.parentNode.removeChild(r.nextSibling);
+    }catch(_){ /* caer al fallback */ }
+
+    // 2) Fallback: genera por tópicos mínimos
+    const topicsByMode = {
+      paa:   ['lectura','algebra','logico'],
+      pca:   ['espanol','matematicas'],
+      pcg:   ['biologia','quimica','fisica','matematicas']
+    };
+    const secs = sectionsByMode(state.mode);
+    const sections = [];
+
+    for (let s=0; s<secs; s++){
+      const title = (state.mode==='paa' ? (s===0?'Lectura':'Matemáticas y Lógico')
+                    : state.mode==='pca' ? (s===0?'Español':'Matemáticas')
+                    : 'Sección '+(s+1));
+      const qs = [];
+
+      // repartimos count entre tópicos
+      const tlist = topicsByMode[state.mode] || ['algebra'];
+      for (let t=0; t<tlist.length; t++){
+        const each = Math.max(1, Math.round(count / tlist.length));
+        try{
+          const g = await apiJSON('/api/generate-questions', { topic: tlist[t], count: each, difficulty });
+          (g||[]).forEach(q=> qs.push(q));
+        }catch(_){}
       }
-
-      const label = document.createElement('label');
-      label.className = 'opt';
-
-      const span = document.createElement('span');
-      span.className = 'txt';
-      span.textContent = txt || r.getAttribute('data-text') || 'Opción';
-
-      const tick = document.createElement('span');
-      tick.className = 'tick';
-      tick.textContent = '✓';
-
-      r.parentNode.insertBefore(label, r);
-      label.appendChild(r);
-      label.appendChild(span);
-      label.appendChild(tick);
-    });
-  }
-
-  // 1) Upgrade inicial (si hay preguntas ya en el DOM al cargar)
-  document.addEventListener('DOMContentLoaded', ()=> enhanceRadios(document));
-
-  // 2) Lo expongo para que lo llames después de renderizar preguntas dinámicamente
-  window.IngresoU = window.IngresoU || {};
-  window.IngresoU.enhanceRadios = enhanceRadios;
-})();
-</script>
-<script src="/assets/onboarding.js"></script>
-<!-- (opcional) si ya agregaste onboarding: -->
-<script src="/assets/onboarding.js"></script>
-
-<!-- Bonito Mode: DEBE ir como el ÚLTIMO <script> antes de </body> -->
-<script>
-(function beautifyExam(){
-  function run(){
-    document.querySelectorAll('h2, h3').forEach(h=>h.classList.add('section-title'));
-    const blocks = Array.from(document.querySelectorAll('.question, .q, li, .pregunta, .pregunta-item'))
-      .filter(el => !el.closest('table, thead, tbody, tfoot, .table, .ranking') && el.querySelector('input[type=radio]'));
-
-    blocks.forEach(q=>{
-      if(!q.classList.contains('q-card')) q.classList.add('q-card');
-      const strong = q.querySelector('b,strong');
-      if (strong && !q.querySelector('.q-title')){
-        const h = document.createElement('div');
-        h.className='q-title'; h.textContent = strong.textContent.trim();
-        strong.replaceWith(h);
-      }
-      const radios = Array.from(q.querySelectorAll('input[type=radio]'));
-      radios.forEach(r=>{
-        let lab = r.closest('label');
-        if(!lab){
-          lab = document.createElement('label');
-          const txt = (r.nextSibling && r.nextSibling.nodeType===3) ? r.nextSibling.nodeValue.trim() : '';
-          lab.textContent = txt;
-          r.parentNode.insertBefore(lab, r.nextSibling);
-        }
-        lab.classList.add('opt');
-        lab.addEventListener('click', ()=>{
-          radios.forEach(x=> x.closest('label')?.classList.remove('sel'));
-          r.checked = true;
-          lab.classList.add('sel');
+      // si faltan, rellena algebras determinísticas
+      while (qs.length < count){
+        qs.push({
+          prompt: `¿Cuánto es ${qs.length+1} + ${qs.length+2}?`,
+          choices: [`${qs.length}`, `${qs.length+1}`, `${qs.length+2}`, `${qs.length+3}`],
+          answer_index: 1, topic: 'algebra'
         });
+      }
+      sections.push({ title, questions: qs.slice(0,count) });
+    }
+
+    state.exam = { ok:true, sections, seed: Date.now()%1e6 };
+    renderExam();
+    startTimer();
+    $('#sim-info').innerHTML = `Simulador: <b>${state.mode.toUpperCase()}</b> · secciones=<b>${sections.length}</b> · seed=${state.exam.seed}`;
+  }
+
+  function renderExam(){
+    const root = $('#exam-root');
+    if (!state.exam?.sections?.length){
+      root.innerHTML = '<div class="inline-note bad">No se pudo generar el examen. Intenta de nuevo.</div>';
+      return;
+    }
+    let html = '';
+    let qn = 0;
+    state.exam.sections.forEach((sec,i)=>{
+      html += `<h3 class="section-title">${sec.title || ('Sección '+(i+1))} <span class="pill small">${sec.questions.length} preguntas</span></h3>`;
+      sec.questions.forEach(q=>{
+        qn++;
+        html += `<div class="q-card">
+          <div class="q-title">${qn}. ${escapeHTML(q.prompt||'Sin enunciado')}</div>
+          <div class="opts">` +
+          (q.choices||[]).map((c,idx)=>{
+            const name = `q_${i}_${qn}`;
+            return `<label class="opt">
+              <input type="radio" name="${name}" value="${idx}">
+              <span>${escapeHTML(String(c))}</span>
+            </label>`;
+          }).join('') +
+          `</div></div>`;
       });
     });
+    html += `<div class="row" style="gap:10px;margin-top:12px">
+      <button id="btn-submit" class="btn brand">Enviar respuestas</button>
+      <span class="small">Se enviará tu puntaje al ranking (${state.mode.toUpperCase()}).</span>
+    </div>`;
+    root.innerHTML = html;
+
+    // Clicks: marcar opción elegida con .sel
+    root.querySelectorAll('.opt').forEach(lab=>{
+      lab.addEventListener('click', ()=>{
+        const name = lab.querySelector('input')?.name;
+        if (!name) return;
+        root.querySelectorAll(`input[name="${name}"]`).forEach(r=>{
+          r.closest('label')?.classList.remove('sel');
+        });
+        lab.classList.add('sel');
+      });
+    });
+
+    $('#btn-submit').onclick = submitExam;
   }
-  document.addEventListener('DOMContentLoaded', run);
-  setTimeout(run, 200);
-  setTimeout(run, 800);
+
+  function escapeHTML(s){ return s.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
+
+  function startTimer(){
+    clearInterval(state.tInt);
+    state.t0 = Date.now();
+    const total = state.durationSec || timeByMode(state.mode);
+    $('#total-time').textContent = fmtMMSS(total);
+    const tick = ()=>{
+      const used = Math.floor((Date.now()-state.t0)/1000);
+      const left = Math.max(0, total - used);
+      $('#left-time').textContent = fmtMMSS(left);
+      if (left<=0){ clearInterval(state.tInt); submitExam(); }
+    };
+    tick(); state.tInt = setInterval(tick, 1000);
+  }
+
+  function collectResult(){
+    // Cuenta correctas si el backend incluyó answer_index; si no, solo cuenta respondidas
+    let correct = 0, total = 0;
+    const sec = state.exam?.sections||[];
+    let qn = 0;
+    sec.forEach((s, si)=>{
+      (s.questions||[]).forEach(q=>{
+        qn++; total++;
+        const name = `q_${si}_${qn}`;
+        const sel = document.querySelector(`input[name="${name}"]:checked`);
+        const idx = sel ? Number(sel.value) : -1;
+        if (typeof q.answer_index === 'number' && idx===q.answer_index) correct++;
+      });
+    });
+    const duration = Math.floor((Date.now()-state.t0)/1000);
+    return { correct, total, duration };
+  }
+
+  async function submitExam(){
+    const r = collectResult();
+    const email = (localStorage.getItem('ingresou_email')||'').toLowerCase();
+    const code  = (localStorage.getItem('ingresou_key')||'').toUpperCase();
+    const uni   = (localStorage.getItem('ingresou_university')||null);
+
+    // UI
+    $('#exam-root').insertAdjacentHTML('afterbegin', `<div class="inline-note">Enviando puntaje…</div>`);
+
+    try{
+      if (email && code){
+        await apiJSON('/api/submit-score', {
+          email, code, topic: state.mode, score: r.correct, duration: r.duration, university: uni
+        });
+      }
+      const msg = `¡Listo! Correctas: <b>${r.correct}</b> / ${r.total}. Tiempo: <b>${fmtMMSS(r.duration)}</b>.`;
+      $('#exam-root').insertAdjacentHTML('afterbegin', `<div class="inline-note">${msg}</div>`);
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }catch(e){
+      $('#exam-root').insertAdjacentHTML('afterbegin', `<div class="inline-note bad">No se pudo enviar el score. Igual puedes ver tus resultados locales.</div>`);
+    }
+  }
+
+  // Eventos UI
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // Presets
+    $('#preset-chips').addEventListener('click', (ev)=>{
+      const m = ev.target.closest('[data-mode]')?.dataset.mode;
+      if (!m) return;
+      applyMode(m);
+      generateExam();
+      history.replaceState(null,'',`/exam.html?mode=${m}`);
+    });
+
+    // Dificultad/Custom
+    $('#btn-gen').onclick = generateExam;
+
+    // Modo por URL al cargar
+    applyMode(state.mode);
+    if (modeParam) generateExam();
+  });
 })();
 </script>
-</body>
+
+<!-- ===== Onboarding (racha/XP en header) ===== -->
+<script src="/assets/onboarding.js"></script>
 
 </body>
 </html>
+
 
