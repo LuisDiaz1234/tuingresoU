@@ -2,330 +2,471 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Simulador — IngresoU</title>
+  <link rel="icon" href="/favicon.ico">
   <style>
     :root{
-      --bg:#0b1220; --surface:#121a2b; --surface-2:#0f1726;
-      --muted:#9db1d1; --text:#e8f0ff; --brand:#4f8cff; --brand-2:#7a5cff;
-      --ok:#23c55e; --warn:#f59e0b; --err:#ef4444; --chip:#1b2440;
-      --ring: rgba(79,140,255,.35);
+      --bg:#0b1220;
+      --card:#111a2b;
+      --soft:#0f1730;
+      --muted:#7c8aa5;
+      --text:#eaf0ff;
+      --brand1:#6aa2ff;
+      --brand2:#7f56d9;
+      --ok:#12b981;     /* verde */
+      --warn:#f59e0b;   /* amarillo */
+      --bad:#ef4444;    /* rojo */
+      --chip:#1b2540;
+      --chip-ghost:#121a2d;
+      --ring:#2146ff40;
+      --radius:16px;
+      --shadow: 0 8px 28px rgba(0,0,0,.25);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0; background: radial-gradient(1200px 800px at -10% -10%, #101836 0,#0b1220 60%), var(--bg);
-      color:var(--text); font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
+      margin:0;background:linear-gradient(180deg,#0b1220 0%,#0b1324 100%);
+      color:var(--text);font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
+      letter-spacing:.1px;
     }
-    a{color:var(--muted); text-decoration:none}
-    a:hover{color:#fff}
-    .nav{
-      position:sticky; top:0; z-index:50; backdrop-filter: blur(8px);
-      background:linear-gradient(0deg, rgba(11,18,32,.7), rgba(11,18,32,.7));
-      border-bottom:1px solid rgba(255,255,255,.05);
+    a{color:var(--brand1);text-decoration:none}
+    .wrap{max-width:1080px;margin:0 auto;padding:24px 20px 80px}
+    header{
+      position:sticky;top:0;z-index:40;
+      backdrop-filter:saturate(120%) blur(8px);
+      background:#0b1220e6;border-bottom:1px solid #152042;
     }
-    .nav-inner{max-width:1100px;margin:auto;display:flex;align-items:center;gap:18px;padding:14px 18px}
-    .brand{display:flex;align-items:center;gap:10px;font-weight:700}
-    .brand-badge{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--brand-2));display:grid;place-items:center;color:white;font-weight:800}
-    .spacer{flex:1}
-    .nav a.link{padding:8px 10px;border-radius:10px;color:var(--muted)}
-    .nav a.link.active{background:rgba(79,140,255,.12); color:#fff; border:1px solid rgba(79,140,255,.35)}
-    .chip{background:var(--chip); border:1px solid rgba(255,255,255,.06); padding:6px 10px;border-radius:999px; display:inline-flex; gap:8px; align-items:center; color:#cfe0ff}
-    .chip i{filter: drop-shadow(0 0 8px rgba(79,140,255,.25))}
-    main{max-width:1100px;margin:28px auto 60px;padding:0 18px}
-
-    .card{background:linear-gradient(180deg,var(--surface), var(--surface-2)); border:1px solid rgba(255,255,255,.06); box-shadow: 0 10px 30px rgba(0,0,0,.35); border-radius:18px; overflow:hidden}
-    .card .hdr{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;gap:16px}
-    .card .hdr h2{margin:0;font-size:20px}
-    .card .body{padding:18px 20px}
-
-    .presets{display:flex;gap:12px;flex-wrap:wrap}
-    .pill{padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.04); cursor:pointer; color:#cfe0ff}
-    .pill.active{background:linear-gradient(135deg, rgba(79,140,255,.22), rgba(122,92,255,.22)); border-color: var(--ring); color:#fff}
-
-    .row{display:flex; gap:16px; flex-wrap:wrap}
-    .grid {display:grid; grid-template-columns: 1fr auto; gap:12px}
-    .control{display:flex;flex-direction:column;gap:10px; min-width:220px}
-    label{font-size:13px;color:#b9c8e6}
-    select,input{
-      appearance:none; background:#0c1528; color:#eaf2ff; border:1px solid rgba(255,255,255,.12);
-      padding:10px 12px; border-radius:12px; outline:none;
+    header .nav{max-width:1080px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px}
+    .brand{
+      display:flex;align-items:center;gap:10px;margin-right:auto;font-weight:700;
+      letter-spacing:.2px
     }
-    select:focus,input:focus{border-color:var(--ring); box-shadow:0 0 0 3px var(--ring)}
+    .brand .logo{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,var(--brand1),var(--brand2))}
+    .nav a{color:var(--muted)}
+    .nav a.active{color:var(--text)}
+    .badges{display:flex;gap:8px}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#0f1730;color:#cdd7f5;font-size:12px;border:1px solid #182247}
+    .badge .dot{width:8px;height:8px;border-radius:999px;background:#ffb020}
+    .badge .dot.xp{background:#ffd45f}
+
+    /* Titles */
+    h1{font-size:28px;margin:0 0 6px}
+    .sub{color:var(--muted);margin:0 0 18px}
+
+    /* Card blocks */
+    .card{background:var(--card);border:1px solid #152042;border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card.pad{padding:18px}
+    .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+
+    /* Presets */
+    .presets{margin-top:16px}
+    .chip-btn{
+      background:linear-gradient(180deg,#131d37,#0f1730);border:1px solid #182247;color:#d9e3ff;
+      padding:10px 14px;border-radius:999px;cursor:pointer;transition:.2s all ease;
+      display:inline-flex;gap:10px;align-items:center
+    }
+    .chip-btn:hover{transform:translateY(-1px);border-color:#2a3c7a;box-shadow:0 0 0 6px var(--ring)}
+    .chips{display:flex;gap:10px;flex-wrap:wrap}
+
+    /* Controls */
+    .controls{margin-top:18px}
+    .controls .card{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:14px 16px}
+    .pair{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .label{color:#aab6d6;font-size:12px}
+    select,input[type=number]{
+      background:var(--soft);border:1px solid #192246;color:#e9efff;border-radius:10px;padding:10px 12px;outline:none;min-width:180px
+    }
     .btn{
-      background: linear-gradient(135deg, var(--brand), var(--brand-2)); border:0; color:#fff; padding:12px 16px;
-      border-radius:12px; font-weight:700; cursor:pointer; transition: transform .08s ease, box-shadow .08s ease;
-      box-shadow: 0 6px 20px rgba(79,140,255,.35);
+      background:linear-gradient(135deg,var(--brand1),var(--brand2));border:0;color:white;padding:12px 18px;border-radius:12px;
+      font-weight:700;cursor:pointer;box-shadow:0 8px 20px rgba(89,115,255,.28);transition:.2s transform ease
     }
-    .btn:hover{transform: translateY(-1px)}
-    .btn:active{transform: translateY(0)}
-    .btn-outline{background:transparent;border:1px solid rgba(255,255,255,.12); color:#eaf2ff}
-    .meta{display:flex; gap:10px; align-items:center; color:#cfe0ff}
-    .badge{background:var(--chip); padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.06)}
-    .msg{margin-top:12px; font-size:14px; color:#cfe0ff}
-    .msg.ok{color:#a7f3d0}
-    .msg.warn{color:#fde68a}
-    .msg.err{color:#fecaca}
-    .divider{height:1px; background:rgba(255,255,255,.06); margin:16px 0}
+    .btn:hover{transform:translateY(-1px)}
+    .chips-info{display:flex;gap:10px;align-items:center;color:#cdd7f5}
+    .chip-info{background:#0f1730;border:1px solid #182247;border-radius:999px;padding:8px 12px}
 
-    /* Render preguntas */
-    .section{margin-top:18px}
-    .section h3{margin:0 0 10px 0; font-size:18px}
-    .q{
-      background: rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08);
-      padding:16px; border-radius:14px; margin-bottom:12px;
+    /* Info sticky */
+    .sticky-info{
+      position:sticky;top:56px;z-index:30;margin:14px 0;
     }
-    .q .p{margin-bottom:10px}
-    .choices{display:grid; gap:8px}
-    .choice{display:flex; gap:10px; align-items:flex-start}
-    .choice input{margin-top:3px}
-    .hint{font-size:12px; color:#94a8c9}
-    .footer-hint{padding:10px 14px; color:#9db1d1; font-size:13px; border:1px dashed rgba(255,255,255,.14); border-radius:12px; background: rgba(255,255,255,.02)}
+    .sticky-info .bar{display:flex;gap:10px;align-items:center;justify-content:flex-end}
+    .k{background:#0f1730;border:1px solid #182247;border-radius:999px;padding:8px 12px;color:#cdd7f5}
+
+    /* Section / question cards */
+    .section{margin-top:22px}
+    .section .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .title{font-weight:800;letter-spacing:.3px}
+    .muted{color:var(--muted)}
+
+    .q{margin-top:12px}
+    .q-card{
+      background:linear-gradient(180deg,#101a32,#0f1730);border:1px solid #182247;border-radius:14px;padding:14px 14px 8px;margin-bottom:12px
+    }
+    .q-top{display:flex;gap:10px;align-items:flex-start}
+    .q-num{min-width:28px;height:28px;border-radius:10px;background:#182247;color:#b8c5ea;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+    .q-prompt{flex:1}
+    .choices{margin:10px 0 2px;display:grid;gap:8px}
+    .choice{
+      display:flex;align-items:center;gap:10px;background:var(--chip-ghost);border:1px solid #162046;border-radius:12px;padding:10px 12px;
+      cursor:pointer;transition:.15s border-color ease
+    }
+    .choice:hover{border-color:#2940a8}
+    .choice input{display:none}
+    .letter{
+      min-width:28px;height:28px;border-radius:9px;background:#1a2444;color:#cdd7f5;display:inline-flex;align-items:center;justify-content:center;font-weight:800
+    }
+    .choice[data-selected="true"]{background:#1a2450;border-color:#3452ff}
+    .choice[data-correct="true"]{border-color:var(--ok);background:#0f2a23}
+    .choice[data-incorrect="true"]{border-color:var(--bad);background:#2a1414}
+    .explain{color:#a6b4da;font-size:13px;margin:6px 4px 2px;display:none}
+    .explain.show{display:block}
+
+    /* Submit bar */
+    .submit-bar{
+      position:sticky;bottom:0;z-index:50;background:#0a111fE6;backdrop-filter:blur(8px);
+      border-top:1px solid #142147;box-shadow:0 -10px 30px rgba(0,0,0,.28)
+    }
+    .submit-bar .inner{max-width:1080px;margin:0 auto;padding:12px 20px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .score{color:#cdd7f5}
+    .btn.secondary{background:#0f1730;border:1px solid #1c2b58;box-shadow:none}
+    .btn.secondary:hover{transform:none;border-color:#2842a8}
+
+    /* Alerts */
+    .alert{margin-top:12px;border:1px dashed #33406b;color:#cdd7f5;background:#0d152b;padding:10px 12px;border-radius:12px}
+    .alert.bad{border-color:#6e2031;background:#201018}
+
+    @media (max-width:720px){
+      .controls .card{flex-direction:column;align-items:flex-start}
+      .pair{width:100%}
+      select,input[type=number]{width:100%}
+      .sticky-info .bar{justify-content:flex-start}
+    }
   </style>
 </head>
 <body>
-  <header class="nav">
-    <div class="nav-inner">
-      <div class="brand">
-        <div class="brand-badge">U</div> IngresoU
+  <header>
+    <div class="nav">
+      <div class="brand"><div class="logo"></div> IngresoU</div>
+      <a href="/index.html">Inicio</a>
+      <a href="/premium.html">Premium</a>
+      <a href="/leaderboard.html">Ranking</a>
+      <a class="active" href="/exam.html">Examen</a>
+      <div class="badges">
+        <span class="badge"><span class="dot"></span>Racha: <span id="streak">—</span></span>
+        <span class="badge"><span class="dot xp"></span>XP: <span id="xp">—</span></span>
       </div>
-      <a class="link" href="/index.html">Inicio</a>
-      <a class="link" href="/premium.html">Premium</a>
-      <a class="link" href="/leaderboard.html">Ranking</a>
-      <a class="link active" href="/exam.html">Examen</a>
-      <div class="spacer"></div>
-      <span class="chip"><i>🔥</i> Racha: <b id="chip-streak">1</b></span>
-      <span class="chip"><i>⭐</i> XP: <b id="chip-xp">0</b></span>
     </div>
   </header>
 
-  <main>
-    <!-- Presets -->
-    <section class="card">
-      <div class="hdr">
-        <h2>Simuladores oficiales</h2>
-      </div>
-      <div class="body">
-        <div class="presets">
-          <button class="pill" id="preset-paa">PAA (UTP) — 2 secciones, 60+60 min</button>
-          <button class="pill" id="preset-pca">PCA (UP) — 2 secciones, 120 min</button>
-          <button class="pill" id="preset-pcg">PCG (UP) — 4 secciones, 120 min</button>
-        </div>
-      </div>
-    </section>
+  <main class="wrap">
+    <h1>Simuladores oficiales</h1>
+    <p class="sub">Elige un preset y comenzamos de una vez. Los bancos salen de la base de datos.</p>
 
-    <!-- Config y Generación -->
-    <section class="card" style="margin-top:20px">
-      <div class="hdr">
-        <h2>Examen personalizado</h2>
-        <div class="meta">
-          <span class="badge">Tiempo total: <b id="time-total">120:00</b></span>
-          <span class="badge">Tiempo restante: <b id="time-left">—</b></span>
-        </div>
+    <div class="card pad presets">
+      <div class="chips">
+        <button class="chip-btn" data-mode="paa">PAA (UTP) — 2 secciones, 60+60 min</button>
+        <button class="chip-btn" data-mode="pca">PCA (UP) — 2 secciones, 120 min</button>
+        <button class="chip-btn" data-mode="pcg">PCG (UP) — 4 secciones, 120 min</button>
       </div>
-      <div class="body">
-        <div class="row">
-          <div class="control">
-            <label>Dificultad</label>
+    </div>
+
+    <div class="controls">
+      <div class="card">
+        <div class="pair">
+          <div class="field">
+            <span class="label">Dificultad</span>
             <select id="difficulty">
               <option value="easy">Fácil</option>
               <option value="medium" selected>Media</option>
               <option value="hard">Difícil</option>
             </select>
           </div>
-
-          <div class="control">
-            <label>Preguntas por sección</label>
-            <input id="count-per-section" type="number" min="1" max="60" value="30" />
-          </div>
-
-          <div class="control" style="align-self:end">
-            <button id="btn-generate" class="btn">Generar examen</button>
+          <div class="field">
+            <span class="label">Preguntas por sección</span>
+            <input type="number" id="countPerSection" value="30" min="5" max="60">
           </div>
         </div>
-
-        <div id="exam-msg" class="msg hint" style="margin-top:12px;">
-          Selecciona dificultad y genera tu examen.
-        </div>
-
-        <div class="divider"></div>
-
-        <div id="exam-output" class="section"></div>
-
-        <div style="margin-top:12px">
-          <div class="footer-hint">
-            ¿Banco insuficiente? Baja “Preguntas por sección” o agrega más ítems en <code>public.questions</code>.
-          </div>
+        <div class="pair">
+          <button id="btnGenerate" class="btn">Generar examen</button>
         </div>
       </div>
-    </section>
+    </div>
+
+    <div class="sticky-info">
+      <div class="bar">
+        <div class="k">Tiempo total: <b id="totalTime">—</b></div>
+        <div class="k">Tiempo restante: <b id="leftTime">—</b></div>
+      </div>
+    </div>
+
+    <div id="msg" class="alert" style="display:none"></div>
+    <div id="examRoot"></div>
   </main>
 
+  <div class="submit-bar" id="submitBar" style="display:none">
+    <div class="inner">
+      <div class="score" id="scoreInfo">Sin envíos.</div>
+      <div class="row">
+        <button class="btn secondary" id="btnScrollTop">Subir</button>
+        <button class="btn" id="btnSubmit">Enviar respuestas</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    (function() {
-      // ---------- Helpers ----------
-      const $ = sel => document.querySelector(sel);
-      const $$ = sel => document.querySelectorAll(sel);
+    // --------- estado y utilidades
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const qs = new URLSearchParams(location.search);
+    const initialMode = (qs.get('mode') || 'paa').toLowerCase(); // 'paa' | 'pca' | 'pcg'
+    const state = {
+      mode: initialMode,
+      seed: null,
+      totalSec: 0,
+      leftSec: 0,
+      sections: [], // [{title, items:[{prompt,choices,answer_index,explanation}]}]
+      answers: new Map(), // key: qid -> index
+      mounted: false,
+    };
 
-      function getMode() {
-        const m = new URLSearchParams(location.search).get('mode');
-        return (m || 'paa').toLowerCase();
+    // header badges (dummy basados en localStorage para anclar la idea)
+    try{
+      const streak = localStorage.getItem('ingresou_streak') || '1';
+      const xp = localStorage.getItem('ingresou_xp') || '0';
+      $('#streak').textContent = streak;
+      $('#xp').textContent = xp;
+    }catch(e){}
+
+    // activar chips de modo
+    $$('.chip-btn').forEach(b=>{
+      if(b.dataset.mode===initialMode) b.style.outline = '2px solid #365cff';
+      b.addEventListener('click', ()=>{
+        const url = new URL(location.href); url.searchParams.set('mode', b.dataset.mode); location.href = url.toString();
+      });
+    });
+
+    // valores por defecto por modo
+    const defaultsByMode = {
+      paa : {count:30, total: 60*60 + 60*60},     // 2 secciones 60+60
+      pca : {count:50, total: 120*60},            // 120
+      pcg : {count:25, total: 120*60},            // 120 con 4 secciones
+    };
+    const setDefaults = () => {
+      const def = defaultsByMode[state.mode] || defaultsByMode.paa;
+      $('#countPerSection').value = def.count;
+      $('#totalTime').textContent = formatTime(def.total);
+      $('#leftTime').textContent  = '—';
+    };
+    setDefaults();
+
+    $('#btnGenerate').addEventListener('click', generateExam);
+    $('#btnSubmit').addEventListener('click', submitExam);
+    $('#btnScrollTop').addEventListener('click', ()=>window.scrollTo({top:0,behavior:'smooth'}));
+
+    async function generateExam(){
+      const count = parseInt($('#countPerSection').value||'10',10);
+      const difficulty = $('#difficulty').value;
+      const variant = Date.now()%1e6;
+
+      const body = { count_per_section: count, difficulty, variant, mode: state.mode };
+      const res = await fetch('/api/generate-exam', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      }).catch(()=>null);
+
+      if(!res){ return showMsg('No se pudo conectar con el servidor.', true); }
+
+      let data = null;
+      try{ data = await res.json(); }catch(e){ data=null; }
+
+      if(!data || data.ok===false){
+        return showMsg(data?.message || data?.error || 'Banco insuficiente o error en generación. Baja “Preguntas por sección” o agrega más filas en public.questions.', true);
       }
-      function setURLMode(mode) {
-        const u = new URL(location.href);
-        u.searchParams.set('mode', mode);
-        location.href = u.toString();
-      }
-      function niceTime(sec) {
-        sec = Math.max(0, sec|0);
-        const m = Math.floor(sec/60), s = sec%60;
-        return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-      }
 
-      // ---------- UI Estado ----------
-      const chipXP = $('#chip-xp'), chipStreak = $('#chip-streak');
-      try {
-        chipXP.textContent = localStorage.getItem('ingresou_xp') || '0';
-        chipStreak.textContent = localStorage.getItem('ingresou_streak') || '1';
-      } catch {}
+      // normalizar
+      // esperamos data.sections [{title, items:[...]}], total_time_sec, seed, exam
+      // si vienen con otra forma, tratamos de adaptarnos mínimamente
+      const sections = Array.isArray(data.sections) ? data.sections
+        : (Array.isArray(data.items) ? [{title:'Sección', items:data.items}] : []);
+      if(!sections.length){ return showMsg('No llegaron preguntas. Revisa banco.', true); }
 
-      const btnPAA = $('#preset-paa'), btnPCA = $('#preset-pca'), btnPCG = $('#preset-pcg');
-      const btnGenerate = $('#btn-generate');
-      const elCount = $('#count-per-section');
-      const elMsg = $('#exam-msg'), elOut = $('#exam-output');
-      const elTotal = $('#time-total'), elLeft = $('#time-left');
+      state.sections = sections.map((s,si) => ({
+        title: s.title || s.name || `Sección ${si+1}`,
+        items: (s.items||s.questions||[]).map((q,qi)=>({
+          id: `${si+1}-${qi+1}`,
+          prompt: String(q.prompt||q.question||''),
+          choices: Array.isArray(q.choices)? q.choices.map(String) : [],
+          answer_index: Number(q.answer_index ?? -1),
+          explanation: String(q.explanation||''),
+        }))
+      }));
+      state.seed = data.seed || variant;
+      state.totalSec = Number(data.total_time_sec) || (defaultsByMode[state.mode]?.total || 120*60);
+      state.leftSec  = state.totalSec;
 
-      // activar preset visual
-      function paintActivePreset() {
-        const m = getMode();
-        [btnPAA, btnPCA, btnPCG].forEach(b => b.classList.remove('active'));
-        if (m==='paa') btnPAA.classList.add('active');
-        if (m==='pca') btnPCA.classList.add('active');
-        if (m==='pcg') btnPCG.classList.add('active');
+      $('#totalTime').textContent = formatTime(state.totalSec);
+      $('#leftTime').textContent  = formatTime(state.leftSec);
 
-        const totalByMode = { paa:120, pca:120, pcg:120 };
-        elTotal.textContent = `${totalByMode[m] || 120}:00`;
-        elLeft.textContent = '—';
-      }
+      renderExam();
+      tickTimer();
+      showMsg(`Examen listo (${(data.exam||state.mode).toUpperCase()}). Secciones: ${state.sections.map(s=>`${s.title} (${s.items.length})`).join(' · ')}. ¡Éxitos!`, false);
+    }
 
-      btnPAA.addEventListener('click', () => setURLMode('paa'));
-      btnPCA.addEventListener('click', () => setURLMode('pca'));
-      btnPCG.addEventListener('click', () => setURLMode('pcg'));
+    function renderExam(){
+      state.answers.clear();
+      const root = $('#examRoot'); root.innerHTML = '';
+      $('#submitBar').style.display = 'none';
 
-      // ---------- Timer ----------
-      let timerId = null, remaining = 0;
-      function stopTimer(){ if (timerId) { clearInterval(timerId); timerId=null; } }
-      function startTimer(totalSec){
-        stopTimer();
-        remaining = totalSec|0;
-        elLeft.textContent = niceTime(remaining);
-        timerId = setInterval(() => {
-          remaining--;
-          elLeft.textContent = niceTime(remaining);
-          if (remaining <= 0) stopTimer();
-        }, 1000);
-      }
+      state.sections.forEach((sec, si)=>{
+        const secEl = document.createElement('section');
+        secEl.className = 'section';
+        secEl.innerHTML = `
+          <div class="head">
+            <div class="title">${sec.title}</div>
+            <div class="muted">${sec.items.length} preguntas</div>
+          </div>
+          <div class="q" id="sec-${si}"></div>
+        `;
+        root.appendChild(secEl);
 
-      // ---------- Render ----------
-      function renderExam(json){
-        const sections = json.sections || [];
-        elOut.innerHTML = '';
+        const list = secEl.querySelector('.q');
+        sec.items.forEach((q,qi)=>{
+          const card = document.createElement('article');
+          card.className = 'q-card';
+          const letters = ['A','B','C','D','E','F','G','H'];
 
-        sections.forEach(sec => {
-          const box = document.createElement('section');
-          box.className = 'section';
+          const choicesHtml = q.choices.map((c,idx)=>`
+            <label class="choice" data-qid="${q.id}" data-idx="${idx}">
+              <input type="radio" name="q-${q.id}" value="${idx}">
+              <span class="letter">${letters[idx]||'?'}</span>
+              <span class="text">${escapeHtml(c)}</span>
+            </label>
+          `).join('');
 
-          const h = document.createElement('h3');
-          h.textContent = `${sec.title} — ${sec.items.length} preguntas`;
-          box.appendChild(h);
-
-          sec.items.forEach(q => {
-            const card = document.createElement('div');
-            card.className = 'q';
-            const p = document.createElement('div');
-            p.className = 'p';
-            p.textContent = `${q.n}. ${q.prompt}`;
-            card.appendChild(p);
-
-            const choices = document.createElement('div');
-            choices.className = 'choices';
-            (q.choices||[]).forEach((opt, idx) => {
-              const id = `q${q.id}-${idx}`;
-              const line = document.createElement('label');
-              line.className = 'choice';
-              line.innerHTML = `<input type="radio" name="q_${q.id}" id="${id}" value="${idx}" /> <span>${opt}</span>`;
-              choices.appendChild(line);
-            });
-            card.appendChild(choices);
-            elOut.appendChild(card);
-          });
-
-          elOut.appendChild(box);
+          card.innerHTML = `
+            <div class="q-top">
+              <div class="q-num">${qi+1}</div>
+              <div class="q-prompt">${escapeHtml(q.prompt)}</div>
+            </div>
+            <div class="choices">${choicesHtml}</div>
+            <div class="explain" id="exp-${q.id}"></div>
+          `;
+          list.appendChild(card);
         });
+      });
 
-        startTimer(json.total_time_seconds || 120*60);
-      }
+      // listeners para selección
+      $$('.choice').forEach(ch=>{
+        ch.addEventListener('click', ()=>{
+          const qid = ch.dataset.qid;
+          const idx = Number(ch.dataset.idx);
+          // limpiar selección visual
+          $$(`.choice[data-qid="${qid}"]`).forEach(el=>el.dataset.selected="false");
+          ch.dataset.selected = "true";
+          state.answers.set(qid, idx);
+          $('#submitBar').style.display = 'block';
+          updateScoreInfo();
+        });
+      });
+      updateScoreInfo();
+    }
 
-      // ---------- Generar ----------
-      async function generateExam(){
-        try{
-          elMsg.className = 'msg';
-          elMsg.textContent = 'Generando…';
+    function updateScoreInfo(){
+      const total = state.sections.reduce((a,s)=>a+s.items.length,0);
+      const marked = state.answers.size;
+      $('#scoreInfo').textContent = `Marcadas: ${marked}/${total}. Recuerda enviar antes de que termine el tiempo.`;
+    }
 
-          const mode = getMode();
-          const count = Math.max(1, parseInt(elCount.value||'10', 10));
+    function showMsg(text, bad=false){
+      const box = $('#msg');
+      box.textContent = text;
+      box.className = 'alert'+(bad?' bad':'');
+      box.style.display = 'block';
+      setTimeout(()=>{ box.style.display='none'; }, 5000);
+    }
 
-          const resp = await fetch('/api/generate-exam', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ mode, count_per_section: count })
+    function tickTimer(){
+      if(state._timer){ clearInterval(state._timer); }
+      state._timer = setInterval(()=>{
+        if(state.leftSec<=0){ clearInterval(state._timer); state.leftSec=0; $('#leftTime').textContent='00:00'; submitExam(); return; }
+        state.leftSec--; $('#leftTime').textContent = formatTime(state.leftSec);
+      }, 1000);
+    }
+
+    function gradeExam(){
+      let correct = 0;
+      const bySection = [];
+      state.sections.forEach((s)=>{
+        let secRight = 0;
+        s.items.forEach((q)=>{
+          const sel = state.answers.get(q.id);
+          const explainEl = $(`#exp-${q.id}`);
+          // pintar
+          $$(`.choice[data-qid="${q.id}"]`).forEach(el=>{
+            const idx = Number(el.dataset.idx);
+            el.dataset.incorrect = "false";
+            el.dataset.correct = "false";
+            if(idx === q.answer_index) el.dataset.correct = "true";
           });
-          const json = await resp.json();
-
-          if (!json.ok){
-            if (json.error === 'BANK_SHORTAGE'){
-              const falta = (json.missing||[])
-                .map(x => `${x.topic}: ${x.have}/${x.need}`)
-                .join(' · ');
-              elMsg.className = 'msg warn';
-              elMsg.innerHTML = `Banco insuficiente para <b>${(json.mode||mode).toUpperCase()}</b>. Falta: ${falta}.<br>
-              • Intenta bajar “Preguntas por sección” o agrega más ítems en <code>public.questions</code>.`;
-              elOut.innerHTML = '';
-              stopTimer();
-              elLeft.textContent = '—';
-              return;
+          if(sel!=null){
+            if(sel === q.answer_index){ correct++; secRight++; }
+            else{
+              $$(`.choice[data-qid="${q.id}"][data-idx="${sel}"]`).forEach(el=> el.dataset.incorrect="true");
             }
-            elMsg.className = 'msg err';
-            elMsg.textContent = `Error: ${json.error || 'desconocido'}`;
-            elOut.innerHTML='';
-            stopTimer();
-            elLeft.textContent='—';
-            return;
           }
+          if(q.explanation){ explainEl.textContent = q.explanation; explainEl.classList.add('show'); }
+        });
+        bySection.push({title:s.title, right:secRight, total:s.items.length});
+      });
+      return {correct, total: state.sections.reduce((a,s)=>a+s.items.length,0), bySection};
+    }
 
-          elMsg.className = 'msg ok';
-          const secsTxt = (json.sections||[]).map(s=>`${s.title} (${s.items.length})`).join(' · ');
-          elMsg.innerHTML = `Examen listo (${json.exam}/${json.subject}). Secciones: ${secsTxt}. ¡Éxitos!`;
+    async function submitExam(){
+      const g = gradeExam();
+      $('#scoreInfo').textContent = `Resultado: ${g.correct}/${g.total}. ` + g.bySection.map(x=>`${x.title}: ${x.right}/${x.total}`).join(' · ');
 
-          renderExam(json);
-        }catch(e){
-          elMsg.className = 'msg err';
-          elMsg.textContent = `Error: ${e.message}`;
-          stopTimer();
-          elLeft.textContent='—';
-        }
-      }
+      // sumar XP y racha locales (motivacional)
+      try{
+        const prevXP = parseInt(localStorage.getItem('ingresou_xp')||'0',10);
+        localStorage.setItem('ingresou_xp', String(prevXP + g.correct));
+        const prevSt = parseInt(localStorage.getItem('ingresou_streak')||'0',10)||1;
+        localStorage.setItem('ingresou_streak', String(prevSt));
+        $('#xp').textContent = localStorage.getItem('ingresou_xp');
+      }catch(e){}
 
-      btnGenerate.addEventListener('click', generateExam);
+      // enviar a backend (si hay sesión)
+      const email = localStorage.getItem('ingresou_email') || '';
+      const code  = localStorage.getItem('ingresou_key') || '';
+      const university = (state.mode==='paa'?'UTP':'UP');
 
-      // ---------- Boot ----------
-      paintActivePreset();
-      // Autogenerar si viene ?autostart=1
-      if (new URLSearchParams(location.search).get('autostart') === '1'){
-        generateExam();
-      }
-    })();
+      try{
+        await fetch('/api/submit-score', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            email, code, topic: `exam-${state.mode}`, score: g.correct, duration: (state.totalSec-state.leftSec),
+            university
+          })
+        });
+      }catch(e){}
+      showMsg('Respuestas enviadas. ¡Bien hecho!');
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    function formatTime(sec){
+      const m = Math.floor(sec/60), s = sec%60;
+      return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    }
+    function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
+
+    // arranque
+    window.addEventListener('load', ()=>{
+      // resaltar chip activo
+      $$('.chip-btn').forEach(b=> b.style.outline = b.dataset.mode===state.mode ? '2px solid #365cff' : 'none');
+      setDefaults();
+      // si quieres generar automáticamente al abrir:
+      // generateExam();
+    });
   </script>
 </body>
 </html>
-
