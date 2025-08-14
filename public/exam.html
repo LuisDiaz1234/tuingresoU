@@ -1,386 +1,169 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Simulador — IngresoU</title>
-
-  <!-- Tu hoja base (si la tienes) -->
-  <link rel="stylesheet" href="/assets/styles.css"/>
-
-  <!-- ===== Estilos Bonito Mode (embebidos) ===== -->
-  <style>
-    :root{
-      --bg:#0b1220; --card:#0e1620; --line:#1f2a37; --txt:#dce7f5;
-      --brand:#3bb2f6; --brand-2:#1d9bf0;
-    }
-    body{ background:#070d19; color:var(--txt); }
-    .container{ max-width:1060px; margin:0 auto; padding:22px 16px; }
-    .row{ display:flex; align-items:center; }
-    .header{ position:sticky; top:0; z-index:5; backdrop-filter:saturate(140%) blur(6px);
-      background:linear-gradient(180deg, rgba(7,13,25,.92), rgba(7,13,25,.82));
-      border-bottom:1px solid rgba(255,255,255,.06);
-    }
-    .header .brand{ font-weight:800; font-size:1.25rem; letter-spacing:.3px }
-    .nav a{ color:#cfe7ff; text-decoration:none; margin:0 10px; padding:6px 8px; border-radius:8px }
-    .nav a:hover{ background:rgba(255,255,255,.06) }
-    .nav a.active{ color:#fff; background:rgba(59,178,246,.18); border:1px solid rgba(59,178,246,.35) }
-    .btn{ display:inline-flex; gap:8px; align-items:center; border:1px solid rgba(255,255,255,.12);
-      padding:10px 14px; border-radius:10px; color:#e8f4ff; text-decoration:none; cursor:pointer;
-      background:rgba(255,255,255,.03);
-    }
-    .btn:hover{ background:rgba(255,255,255,.06) }
-    .btn.brand{ background:var(--brand); color:#07131e; border:0; font-weight:700 }
-    .btn.brand:hover{ filter:brightness(1.06) }
-    .btn.ghost{ background:transparent; border-color:rgba(255,255,255,.18) }
-    .pill{
-      display:inline-flex; align-items:center; gap:6px;
-      background: rgba(59,178,246,.12); color:#cde9ff;
-      border:1px solid rgba(59,178,246,.35);
-      padding:6px 10px; border-radius:999px; font-size:.9rem;
-    }
-    @keyframes pop{0%{transform:scale(.9);opacity:.6}100%{transform:scale(1);opacity:1}}
-
-    .section{ margin:18px 0 }
-    .card{
-      background: var(--card); border:1px solid var(--line);
-      border-radius:16px; box-shadow:0 6px 16px rgba(0,0,0,.22);
-    }
-    .pad{ padding:16px }
-    .sec{ padding:12px 0 }
-    .sec-head{ display:flex; align-items:center; gap:10px; justify-content:space-between }
-    .chips{ display:flex; flex-wrap:wrap; gap:8px }
-    .chip{ padding:8px 12px; border-radius:999px; border:1px solid var(--line);
-      background:#08111f; cursor:pointer; color:#cfe7ff; font-weight:600; }
-    .chip:hover{ border-color:rgba(59,178,246,.45); background:rgba(59,178,246,.08) }
-
-    /* ===== Bonito Mode examen ===== */
-    .section-title{ margin:12px 0 6px; font-weight:800; }
-    .q-card{ background: #0e1620; border:1px solid #1f2a37; border-radius:14px;
-      padding:16px; margin:12px 0; box-shadow: 0 6px 14px rgba(0,0,0,.18); }
-    .q-title{ font-weight:700; margin-bottom:8px; }
-    .opts{ display:grid; gap:10px; }
-    .opt{
-      display:flex; align-items:center; gap:10px;
-      background:#0b1220; border:1px solid #1f2a37; color:#dce7f5;
-      border-radius:12px; padding:12px 14px; cursor:pointer;
-      transition: transform .08s ease, box-shadow .08s ease, border-color .12s ease, background .12s ease;
-    }
-    .opt:hover{ transform: translateY(-1px); box-shadow:0 8px 18px rgba(0,0,0,.2); }
-    .opt.sel{ border-color:#3bb2f6; background: rgba(59,178,246,.1); box-shadow: 0 0 0 2px rgba(59,178,246,.25) inset; }
-    .opt input[type=radio]{ display:none }
-
-    .inline-note{ padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); display:inline-block }
-    .inline-note.bad{ background:rgba(227,76,86,.08); border-color:rgba(227,76,86,.35); color:#ffd2d6 }
-
-    .table-wrap{ overflow:auto; }
-    .small{ font-size:.92rem; opacity:.88 }
-  </style>
-</head>
-<body>
-
-<header class="header">
-  <div class="container row" style="gap:16px">
-    <div class="brand">IngresoU</div>
-    <nav class="nav">
-      <a href="/index.html">Inicio</a>
-      <a href="/premium.html">Premium</a>
-      <a href="/leaderboard.html">Ranking</a>
-      <a class="active" href="/exam.html">Examen</a>
-    </nav>
-  </div>
-</header>
-
-<main class="container">
-  <!-- Simuladores oficiales -->
-  <section class="section">
-    <div class="card pad">
-      <h2>Simuladores oficiales</h2>
-      <p class="small">Elige un preset y comenzamos de una vez. Los bancos salen de la base de datos.</p>
-      <div class="chips" id="preset-chips">
-        <button class="chip" data-mode="paa">PAA (UTP) — 2 secciones, 60+60 min</button>
-        <button class="chip" data-mode="pca">PCA (UP) — 2 secciones, 120 min</button>
-        <button class="chip" data-mode="pcg">PCG (UP) — 4 secciones, 120 min</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Examen custom -->
-  <section class="section">
-    <div class="card pad">
-      <div class="sec-head">
-        <h2>Examen personalizado</h2>
-        <div>
-          <span class="pill">Tiempo total: <b id="total-time">—</b></span>
-          <span class="pill">Tiempo restante: <b id="left-time">—</b></span>
-        </div>
-      </div>
-
-      <div class="sec row" style="gap:14px; flex-wrap:wrap">
-        <div>
-          <div class="small">Dificultad</div>
-          <select id="difficulty" class="btn">
-            <option value="easy">Baja</option>
-            <option value="medium" selected>Media</option>
-            <option value="hard">Alta</option>
-            <option value="mixed">Mixta</option>
-          </select>
-        </div>
-        <div>
-          <div class="small">Preguntas por sección</div>
-          <input id="count-per" class="btn" type="number" min="5" max="100" value="10" style="width:120px">
-        </div>
-        <button id="btn-gen" class="btn brand">Generar examen</button>
-      </div>
-
-      <div id="sim-info" class="small"></div>
-    </div>
-  </section>
-
-  <!-- Contenido del examen -->
-  <section class="section">
-    <div class="card pad" id="exam-root">
-      <div class="inline-note">Aún no has generado el examen.</div>
-    </div>
-  </section>
-</main>
-
-<!-- ===== JS: lógica de examen (usa /api/generate-exam; fallback a /api/generate-questions) ===== -->
 <script>
-(function(){
-  const $ = (s,el=document)=>el.querySelector(s);
-  const params = new URLSearchParams(location.search);
-  const modeParam = (params.get('mode')||'').toLowerCase();
+(() => {
+  const qs = (sel, el = document) => el.querySelector(sel);
+  const qsa = (sel, el = document) => [...el.querySelectorAll(sel)];
+  const fmt = (n) => String(n).padStart(2, '0');
 
-  const state = {
-    mode: modeParam || 'paa',
-    difficulty: 'medium',
-    countPerSection: 10,
-    durationSec: 0,
-    t0: 0,
-    tInt: null,
-    exam: null, // { sections:[{title, questions:[{prompt, choices[], answer_index}]}], seed }
+  // UI
+  const chips = qsa('[data-preset]');                 // chips: PAA/PCA/PCG
+  const diffSel = qs('#diffSelect') || qs('select[name="difficulty"]');
+  const countInput = qs('#countPerSection') || qs('input[name="countPerSection"]');
+  const generateBtn = qs('#btnGenerate') || qs('button[data-generate]');
+  const totalTimeEl = qs('[data-total]');
+  const remainingEl = qs('[data-remaining]');
+  const panel = qs('#examPanel') || qs('[data-exam-panel]');
+  const msgBox = qs('#examMsg') || qs('[data-exam-msg]');
+
+  let mode = new URLSearchParams(location.search).get('mode') || 'paa';
+  let timerId = null;
+  let deadline = null;
+
+  // Presets oficiales
+  const PRESETS = {
+    paa: { label: 'PAA',  sections: 2, time: 120, count: 30, topics: ['algebra','lectura'] }, // 30+30
+    pca: { label: 'PCA',  sections: 2, time: 120, count: 50, topics: ['lectura','algebra'] }, // 50+50 (español->lectura)
+    pcg: { label: 'PCG',  sections: 4, time: 120, count: 25, topics: ['biologia','quimica','fisica','algebra'] }, // 25×4
   };
 
-  const timeByMode = (m)=>(
-    m==='paa' ? (60+60)*60 :
-    m==='pca' ? 120*60 :
-    m==='pcg' ? 120*60 : 60*60
-  );
-  const sectionsByMode = (m)=>(
-    m==='paa' ? 2 : m==='pca' ? 2 : m==='pcg' ? 4 : 1
-  );
-
-  function fmtMMSS(sec){
-    const m = Math.floor(sec/60), s = Math.floor(sec%60);
-    return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  // ---------- helpers ----------
+  function showMsg(text, tone = 'info') {
+    if (!msgBox) return;
+    msgBox.innerHTML = text;
+    msgBox.className = ''; // reset
+    msgBox.classList.add('msg', tone); // .msg.info/.msg.warn/.msg.error
+  }
+  function clearMsg() {
+    if (!msgBox) return;
+    msgBox.innerHTML = '';
+    msgBox.className = 'msg';
+  }
+  function resetTimer() {
+    if (timerId) clearInterval(timerId);
+    timerId = null; deadline = null;
+    if (remainingEl) remainingEl.textContent = '—';
+  }
+  function startTimer(mins) {
+    resetTimer();
+    deadline = Date.now() + mins*60*1000;
+    timerId = setInterval(() => {
+      const left = Math.max(0, deadline - Date.now());
+      const m = Math.floor(left/60000), s = Math.floor((left%60000)/1000);
+      if (remainingEl) remainingEl.textContent = `${fmt(m)}:${fmt(s)}`;
+      if (left <= 0) { clearInterval(timerId); timerId = null; }
+    }, 250);
+  }
+  function setPreset(newMode) {
+    mode = newMode;
+    const p = PRESETS[mode];
+    if (totalTimeEl) totalTimeEl.textContent = `${fmt(p.time)}:00`;
+    if (countInput) countInput.value = p.count; // por defecto oficial (si falta banco, mostraremos error)
+    // Marca chip activo visualmente
+    chips.forEach(c => c.classList.toggle('active', c.dataset.preset === mode));
   }
 
-  function applyMode(m){
-    state.mode = m;
-    state.durationSec = timeByMode(m);
-    $('#total-time').textContent = fmtMMSS(state.durationSec);
-    $('#left-time').textContent = '—';
-    $('#sim-info').innerHTML = '';
-    $('#exam-root').innerHTML = '<div class="inline-note">Selecciona dificultad y genera tu examen.</div>';
-    $('#count-per').value = (m==='pcg'? 10 : 10);
+  // Render
+  function renderExam(sections) {
+    if (!panel) return;
+    const html = sections.map((sec, idx) => {
+      const qhtml = sec.questions.map((q, i) => {
+        const opts = q.choices.map((c, j) => `
+          <label class="opt">
+            <input type="radio" name="q-${sec.key}-${i}" value="${j}"> <span>${c}</span>
+          </label>
+        `).join('');
+        return `
+          <div class="q-card">
+            <div class="q-title">${i+1}. ${q.prompt}</div>
+            <div class="q-opts">${opts}</div>
+          </div>
+        `;
+      }).join('');
+      return `
+        <section class="sec">
+          <div class="sec-head">
+            <h3>${sec.title}</h3>
+            <span class="pill">${sec.questions.length} preguntas</span>
+          </div>
+          ${qhtml}
+        </section>
+      `;
+    }).join('');
+    panel.innerHTML = html;
   }
 
-  async function apiJSON(url, body){
-    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    return r.json();
-  }
+  // Llamada al backend
+  async function generateExam() {
+    clearMsg();
+    if (!PRESETS[mode]) setPreset('paa');
 
-  async function generateExam(){
-    const difficulty = $('#difficulty').value;
-    const count = Math.max(5, Math.min(100, Number($('#count-per').value||10)));
-    state.difficulty = difficulty;
-    state.countPerSection = count;
+    const p = PRESETS[mode];
+    const difficulty = (diffSel && diffSel.value) || 'medium';
+    const count = parseInt((countInput && countInput.value) || `${p.count}`, 10) || p.count;
 
-    // 1) Intenta endpoint dedicado
-    try{
-      const j = await apiJSON('/api/generate-exam', {
-        mode: state.mode, difficulty, count_per_section: count, variant: Date.now()%1e6
+    // Petición simple al endpoint unificado
+    let resp;
+    try {
+      resp = await fetch('/api/generate-exam', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          mode,
+          difficulty,
+          count_per_section: count
+        })
       });
-      if (j && j.ok && j.sections?.length){
-        state.exam = j;
-        renderExam();
-        startTimer();
-        $('#sim-info').innerHTML = `Simulador: <b>${state.mode.toUpperCase()}</b> · secciones=<b>${j.sections.length}</b> · seed=${j.seed||'—'}`;
-        return;
-      }
-    }catch(_){ /* caer al fallback */ }
-
-    // 2) Fallback: genera por tópicos mínimos
-    const topicsByMode = {
-      paa:   ['lectura','algebra','logico'],
-      pca:   ['espanol','matematicas'],
-      pcg:   ['biologia','quimica','fisica','matematicas']
-    };
-    const secs = sectionsByMode(state.mode);
-    const sections = [];
-
-    for (let s=0; s<secs; s++){
-      const title = (state.mode==='paa' ? (s===0?'Lectura':'Matemáticas y Lógico')
-                    : state.mode==='pca' ? (s===0?'Español':'Matemáticas')
-                    : 'Sección '+(s+1));
-      const qs = [];
-
-      // repartimos count entre tópicos
-      const tlist = topicsByMode[state.mode] || ['algebra'];
-      for (let t=0; t<tlist.length; t++){
-        const each = Math.max(1, Math.round(count / tlist.length));
-        try{
-          const g = await apiJSON('/api/generate-questions', { topic: tlist[t], count: each, difficulty });
-          (g||[]).forEach(q=> qs.push(q));
-        }catch(_){}
-      }
-      // si faltan, rellena algebras determinísticas
-      while (qs.length < count){
-        qs.push({
-          prompt: `¿Cuánto es ${qs.length+1} + ${qs.length+2}?`,
-          choices: [`${qs.length}`, `${qs.length+1}`, `${qs.length+2}`, `${qs.length+3}`],
-          answer_index: 1, topic: 'algebra'
-        });
-      }
-      sections.push({ title, questions: qs.slice(0,count) });
-    }
-
-    state.exam = { ok:true, sections, seed: Date.now()%1e6 };
-    renderExam();
-    startTimer();
-    $('#sim-info').innerHTML = `Simulador: <b>${state.mode.toUpperCase()}</b> · secciones=<b>${sections.length}</b> · seed=${state.exam.seed}`;
-  }
-
-  function renderExam(){
-    const root = $('#exam-root');
-    if (!state.exam?.sections?.length){
-      root.innerHTML = '<div class="inline-note bad">No se pudo generar el examen. Intenta de nuevo.</div>';
+    } catch (e) {
+      showMsg('Error de red. Verifica tu conexión o tu despliegue.', 'error');
       return;
     }
-    let html = '';
-    let qn = 0;
-    state.exam.sections.forEach((sec,i)=>{
-      html += `<h3 class="section-title">${sec.title || ('Sección '+(i+1))} <span class="pill small">${sec.questions.length} preguntas</span></h3>`;
-      sec.questions.forEach(q=>{
-        qn++;
-        html += `<div class="q-card">
-          <div class="q-title">${qn}. ${escapeHTML(q.prompt||'Sin enunciado')}</div>
-          <div class="opts">` +
-          (q.choices||[]).map((c,idx)=>{
-            const name = `q_${i}_${qn}`;
-            return `<label class="opt">
-              <input type="radio" name="${name}" value="${idx}">
-              <span>${escapeHTML(String(c))}</span>
-            </label>`;
-          }).join('') +
-          `</div></div>`;
-      });
-    });
-    html += `<div class="row" style="gap:10px;margin-top:12px">
-      <button id="btn-submit" class="btn brand">Enviar respuestas</button>
-      <span class="small">Se enviará tu puntaje al ranking (${state.mode.toUpperCase()}).</span>
-    </div>`;
-    root.innerHTML = html;
 
-    // Clicks: marcar opción elegida con .sel
-    root.querySelectorAll('.opt').forEach(lab=>{
-      lab.addEventListener('click', ()=>{
-        const name = lab.querySelector('input')?.name;
-        if (!name) return;
-        root.querySelectorAll(`input[name="${name}"]`).forEach(r=>{
-          r.closest('label')?.classList.remove('sel');
-        });
-        lab.classList.add('sel');
-      });
-    });
-
-    $('#btn-submit').onclick = submitExam;
-  }
-
-  function escapeHTML(s){ return s.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
-
-  function startTimer(){
-    clearInterval(state.tInt);
-    state.t0 = Date.now();
-    const total = state.durationSec || timeByMode(state.mode);
-    $('#total-time').textContent = fmtMMSS(total);
-    const tick = ()=>{
-      const used = Math.floor((Date.now()-state.t0)/1000);
-      const left = Math.max(0, total - used);
-      $('#left-time').textContent = fmtMMSS(left);
-      if (left<=0){ clearInterval(state.tInt); submitExam(); }
-    };
-    tick(); state.tInt = setInterval(tick, 1000);
-  }
-
-  function collectResult(){
-    // Cuenta correctas si el backend incluyó answer_index; si no, solo cuenta respondidas
-    let correct = 0, total = 0;
-    const sec = state.exam?.sections||[];
-    let qn = 0;
-    sec.forEach((s, si)=>{
-      (s.questions||[]).forEach(q=>{
-        qn++; total++;
-        const name = `q_${si}_${qn}`;
-        const sel = document.querySelector(`input[name="${name}"]:checked`);
-        const idx = sel ? Number(sel.value) : -1;
-        if (typeof q.answer_index === 'number' && idx===q.answer_index) correct++;
-      });
-    });
-    const duration = Math.floor((Date.now()-state.t0)/1000);
-    return { correct, total, duration };
-  }
-
-  async function submitExam(){
-    const r = collectResult();
-    const email = (localStorage.getItem('ingresou_email')||'').toLowerCase();
-    const code  = (localStorage.getItem('ingresou_key')||'').toUpperCase();
-    const uni   = (localStorage.getItem('ingresou_university')||null);
-
-    // UI
-    $('#exam-root').insertAdjacentHTML('afterbegin', `<div class="inline-note">Enviando puntaje…</div>`);
-
-    try{
-      if (email && code){
-        await apiJSON('/api/submit-score', {
-          email, code, topic: state.mode, score: r.correct, duration: r.duration, university: uni
-        });
-      }
-      const msg = `¡Listo! Correctas: <b>${r.correct}</b> / ${r.total}. Tiempo: <b>${fmtMMSS(r.duration)}</b>.`;
-      $('#exam-root').insertAdjacentHTML('afterbegin', `<div class="inline-note">${msg}</div>`);
-      window.scrollTo({ top:0, behavior:'smooth' });
-    }catch(e){
-      $('#exam-root').insertAdjacentHTML('afterbegin', `<div class="inline-note bad">No se pudo enviar el score. Igual puedes ver tus resultados locales.</div>`);
+    let data;
+    try { data = await resp.json(); } catch {
+      showMsg('Respuesta no válida del servidor. Revisa logs de Vercel.', 'error');
+      return;
     }
+
+    if (!data.ok) {
+      // Mensajes claros cuando falta banco
+      if (data.error === 'INSUFFICIENT_BANK') {
+        const need = count;
+        showMsg(`
+          <b>Banco insuficiente</b> para <b>${p.label}</b>.<br>
+          • Intenta bajar “Preguntas por sección” (ej., 8).<br>
+          • O agrega más preguntas con SQL (recomendado).<br>
+          <small>Detalle: ${data.detail || ''}</small>
+        `, 'warn');
+      } else {
+        showMsg(`No se pudo generar el examen: ${data.error || 'Error'}`, 'error');
+      }
+      return;
+    }
+
+    // Render & timer
+    renderExam(data.sections || []);
+    if (totalTimeEl) totalTimeEl.textContent = `${fmt(p.time)}:00`;
+    startTimer(p.time);
+    showMsg(`${p.label} listo. ¡Éxitos!`, 'info');
   }
 
-  // Eventos UI
-  document.addEventListener('DOMContentLoaded', ()=>{
-    // Presets
-    $('#preset-chips').addEventListener('click', (ev)=>{
-      const m = ev.target.closest('[data-mode]')?.dataset.mode;
-      if (!m) return;
-      applyMode(m);
-      generateExam();
-      history.replaceState(null,'',`/exam.html?mode=${m}`);
+  // Eventos
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      setPreset(chip.dataset.preset);
+      // Preajustar el count oficial, pero no generamos aún para que el usuario vea el valor
+      const p = PRESETS[mode];
+      if (countInput) countInput.value = p.count;
+      clearMsg(); resetTimer(); panel && (panel.innerHTML = '');
+      // Auto-intento: si quieres que dispare de una, descomenta:
+      // generateExam();
     });
-
-    // Dificultad/Custom
-    $('#btn-gen').onclick = generateExam;
-
-    // Modo por URL al cargar
-    applyMode(state.mode);
-    if (modeParam) generateExam();
   });
+  generateBtn && generateBtn.addEventListener('click', generateExam);
+
+  // Inicializa por query param:
+  setPreset(mode);
 })();
 </script>
 
-<!-- ===== Onboarding (racha/XP en header) ===== -->
-<script src="/assets/onboarding.js"></script>
-
-</body>
-</html>
 
 
