@@ -1,0 +1,34 @@
+/* ====== Chips HUD ====== */
+.pill{
+  display:inline-flex; align-items:center; gap:6px;
+  background: rgba(59,178,246,.12); color:#cde9ff;
+  border:1px solid rgba(59,178,246,.35);
+  padding:6px 10px; border-radius:999px; font-size:.9rem;
+}
+@keyframes pop{0%{transform:scale(.9);opacity:.6}100%{transform:scale(1);opacity:1}}
+
+/* ====== Títulos de sección ====== */
+.section-title{ margin:12px 0 6px; font-weight:700; }
+
+/* ====== Tarjeta de pregunta ====== */
+.q-card{
+  background: #0e1620; border:1px solid #1f2a37;
+  border-radius:14px; padding:16px; margin:12px 0;
+  box-shadow: 0 6px 14px rgba(0,0,0,.18);
+}
+.q-title{ font-weight:600; margin-bottom:8px; }
+
+/* Contenedor de opciones */
+.opts{ display:grid; gap:10px; }
+
+/* Opción (con label) */
+.opt{
+  display:flex; align-items:center; gap:10px;
+  background:#0b1220; border:1px solid #1f2a37; color:#dce7f5;
+  border-radius:12px; padding:12px 14px; cursor:pointer;
+  transition: transform .08s ease, box-shadow .08s ease, border-color .12s ease, background .12s ease;
+}
+.opt:hover{ transform: translateY(-1px); box-shadow:0 8px 18px rgba(0,0,0,.2); }
+.opt.sel{
+  border-color:#3bb2f6; background: rgba(59,178,246,.1);
+  b
