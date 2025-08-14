@@ -90,8 +90,231 @@
       <div class="chips">
         <button class="chip" data-preset="paa">PAA (UTP) — 2 secciones, 60+60 min</button>
         <button class="chip" data-preset="pca">PCA (UP) — 2 secciones, 120 min</button>
-        <button class="chip" data-preset=
+        <button class="chip" data-preset="pcg">PCG (UP) — 4 secciones, 120 min</button>
+      </div>
+    </section>
 
+    <!-- PERSONALIZADO -->
+    <section class="card">
+      <h2>Examen personalizado</h2>
+      <div class="row" style="margin-bottom:8px">
+        <span class="pill">Tiempo total: <b data-total>120:00</b></span>
+        <span class="pill">Tiempo restante: <b data-remaining>—</b></span>
+      </div>
+      <div class="row">
+        <div class="control">
+          <label>Dificultad</label>
+          <select id="diffSelect">
+            <option value="easy">Baja</option>
+            <option value="medium" selected>Media</option>
+            <option value="hard">Alta</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>Preguntas por sección</label>
+          <input id="countPerSection" type="number" min="3" step="1" value="30" />
+        </div>
+        <div class="control" style="margin-top:22px">
+          <button id="btnGenerate" class="btn">Generar examen</button>
+        </div>
+      </div>
+      <div id="examMsg" class="msg"></div>
+    </section>
 
+    <!-- AQUÍ SE RENDERIZA EL EXAMEN -->
+    <div id="examPanel"></div>
+
+    <p class="helper">¿Banco insuficiente? Baja “Preguntas por sección” o agrega más ítems en <code>public.questions</code>.</p>
+  </div>
+
+  <script>
+(() => {
+  // ---------- Short DOM helpers ----------
+  const qs  = (s,el=document)=>el.querySelector(s);
+  const qsa = (s,el=document)=>[...el.querySelectorAll(s)];
+  const fmt = n=>String(n).padStart(2,'0');
+
+  // ---------- Elements ----------
+  const chips       = qsa('[data-preset]');
+  const diffSel     = qs('#diffSelect');
+  const countInput  = qs('#countPerSection');
+  const btnGenerate = qs('#btnGenerate');
+  const totalTimeEl = qs('[data-total]');
+  const remainEl    = qs('[data-remaining]');
+  const panel       = qs('#examPanel');
+  const msgBox      = qs('#examMsg');
+
+  // ---------- State ----------
+  let mode = new URLSearchParams(location.search).get('mode') || 'paa';
+  let timerId = null, deadline = null;
+
+  // ---------- Presets oficiales ----------
+  const PRESETS = {
+    paa: {
+      label:'PAA', time:120, defaultCount:30,
+      sections: [
+        { key:'algebra', title:'Matemáticas (Álgebra)', topic:'algebra' },
+        { key:'lectura', title:'Lectura',               topic:'lectura' },
+      ]
+    },
+    pca: {
+      label:'PCA', time:120, defaultCount:50,
+      sections: [
+        { key:'lectura', title:'Español (Comprensión/Gramática)', topic:'lectura' },
+        { key:'algebra', title:'Matemáticas',                     topic:'algebra' },
+      ]
+    },
+    pcg: {
+      label:'PCG', time:120, defaultCount:25,
+      sections: [
+        { key:'biologia', title:'Biología',    topic:'biologia' },
+        { key:'quimica',  title:'Química',     topic:'quimica'  },
+        { key:'fisica',   title:'Física',      topic:'fisica'   },
+        { key:'algebra',  title:'Matemáticas', topic:'algebra'  },
+      ]
+    }
+  };
+
+  // ---------- UI Utils ----------
+  function showMsg(html, tone='info'){
+    msgBox.innerHTML = html;
+    msgBox.className = 'msg ' + (tone==='error' ? 'error' : tone==='warn' ? 'warn' : 'ok');
+  }
+  function clearMsg(){ msgBox.innerHTML=''; msgBox.className='msg'; }
+
+  function resetTimer(){
+    if (timerId) clearInterval(timerId);
+    timerId = null; deadline = null;
+    if (remainEl) remainEl.textContent = '—';
+  }
+  function startTimer(mins){
+    resetTimer();
+    deadline = Date.now() + mins*60*1000;
+    timerId = setInterval(()=>{
+      const left = Math.max(0, deadline - Date.now());
+      const m = Math.floor(left/60000), s = Math.floor((left%60000)/1000);
+      if (remainEl) remainEl.textContent = `${fmt(m)}:${fmt(s)}`;
+      if (left<=0){ clearInterval(timerId); timerId=null; }
+    }, 250);
+  }
+
+  function setPreset(newMode){
+    mode = newMode;
+    const p = PRESETS[mode] || PRESETS.paa;
+    if (totalTimeEl) totalTimeEl.textContent = `${fmt(p.time)}:00`;
+    if (countInput)  countInput.value      = p.defaultCount;
+    chips.forEach(c => c.classList.toggle('active', c.dataset.preset === mode));
+    clearMsg(); resetTimer(); panel.innerHTML='';
+  }
+
+  // ---------- Render ----------
+  function renderExam(sections){
+    panel.innerHTML = sections.map(sec => {
+      const qs = sec.questions.map((q, i)=>{
+        const opts = q.choices.map((c, j)=>`
+          <label class="opt">
+            <input type="radio" name="q-${sec.key}-${i}" value="${j}">
+            <span>${c}</span>
+          </label>
+        `).join('');
+        return `<div class="q-card">
+          <div class="q-title">${i+1}. ${q.prompt}</div>
+          <div class="q-opts">${opts}</div>
+        </div>`;
+      }).join('');
+      return `<section class="sec">
+        <div class="sec-head"><h3>${sec.title}</h3><span class="pill">${sec.questions.length} preguntas</span></div>
+        ${qs}
+      </section>`;
+    }).join('');
+  }
+
+  // ---------- Backend (Plan A / Plan B) ----------
+  async function callGenerateExamUnified(payload){
+    try{
+      const r = await fetch('/api/generate-exam', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      if (r.status === 404) return { ok:false, error:'NOT_FOUND' };
+      let dj; try{ dj = await r.json(); }catch{ return { ok:false, error:'BAD_JSON' }; }
+      return dj;
+    }catch{ return { ok:false, error:'NETWORK' }; }
+  }
+
+  // Plan B: llamar /api/generate-questions por tópico, con degradación de count si no alcanza
+  async function callByTopics(preset, count, difficulty){
+    const sections = [];
+    for (const s of preset.sections){
+      let want = count, got = null, lastErr = null;
+      while (want >= 3){
+        try{
+          const r = await fetch('/api/generate-questions', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ topic: s.topic, count: want, difficulty })
+          });
+          const dj = await r.json();
+          if (dj.ok && Array.isArray(dj.items) && dj.items.length){
+            got = dj.items; break;
+          }else{
+            lastErr = dj.error || 'UNKNOWN';
+            if (lastErr === 'INSUFFICIENT_BANK'){ want -= 2; continue; }
+            break;
+          }
+        }catch(e){ lastErr = 'NETWORK'; break; }
+      }
+      if (!got){
+        return { ok:false, error:'INSUFFICIENT_BANK', detail:`Sección "${s.title}" (tema: ${s.topic}). Último error: ${lastErr||'—'}.` };
+      }
+      sections.push({ key:s.key, title:s.title, questions:got });
+    }
+    return { ok:true, sections };
+  }
+
+  async function generateExam(){
+    clearMsg();
+    const preset     = PRESETS[mode] || PRESETS.paa;
+    const difficulty = diffSel.value || 'medium';
+    const count      = parseInt(countInput.value || `${preset.defaultCount}`, 10) || preset.defaultCount;
+
+    // Plan A
+    let data = await callGenerateExamUnified({ mode, difficulty, count_per_section: count });
+    if (data.ok){
+      renderExam(data.sections || []);
+      startTimer(preset.time);
+      showMsg(`${preset.label} listo. ¡Éxitos!`, 'ok');
+      return;
+    }
+
+    // Plan B
+    data = await callByTopics(preset, count, difficulty);
+    if (!data.ok){
+      if (data.error === 'INSUFFICIENT_BANK'){
+        showMsg(`
+          <b>Banco insuficiente</b> para <b>${preset.label}</b>.<br>
+          • Baja “Preguntas por sección” (ej.: 8).<br>
+          • O agrega más filas en <code>public.questions</code> (tema faltante).<br>
+          <small>${data.detail || ''}</small>
+        `,'warn');
+      }else{
+        showMsg(`No se pudo generar el examen (Plan B): ${data.error || 'Error'}`,'error');
+      }
+      return;
+    }
+    renderExam(data.sections);
+    startTimer(preset.time);
+    showMsg(`${preset.label} listo (Plan B).`, 'ok');
+  }
+
+  // ---------- Events ----------
+  chips.forEach(chip => chip.addEventListener('click', () => setPreset(chip.dataset.preset)));
+  btnGenerate.addEventListener('click', generateExam);
+
+  // Init
+  setPreset(mode);
+})();
+  </script>
+</body>
+</html>
 
 
