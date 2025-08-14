@@ -7,7 +7,60 @@
   <link rel="stylesheet" href="/assets/styles.css"/>
   <meta name="color-scheme" content="dark light"/>
 </head>
+
 <body>
+<!-- ===== HARDENER: asegura que [data-buy] funcione sí o sí ===== -->
+<script>
+(function(){
+  // Defaults por si falla /api/public-config
+  const DEF_PHONE = '+50760000000';
+  const DEF_CURR  = 'PAB';
+  const DEF_PRICE = {mensual_cents:999,trimestral_cents:2499,anual_cents:6900};
+
+  let CFG = {currency:DEF_CURR,yappy_phone:DEF_PHONE,prices:DEF_PRICE};
+
+  // Cargar config pública (no bloquea si falla)
+  (async ()=>{
+    try{
+      const r = await fetch('/api/public-config',{cache:'no-store'});
+      const j = await r.json();
+      if(j && j.ok) CFG = j;
+    }catch(_){}
+  })();
+
+  function money(cents, curr){ return (Number(cents||0)/100).toLocaleString('es-PA',{style:'currency',currency:curr||CFG.currency||'PAB'}); }
+  function buildWA(plan){
+    const cents = plan==='anual' ? (CFG.prices.anual_cents||0)
+                : plan==='trimestral' ? (CFG.prices.trimestral_cents||0)
+                : (CFG.prices.mensual_cents||0);
+    const amount = money(cents, CFG.currency);
+    const email  = (localStorage.getItem('ingresou_email')||'').toLowerCase();
+    const msg = encodeURIComponent(`Hola, quiero comprar el plan ${plan.toUpperCase()} (${amount}) para IngresoU. Mi correo: ${email||'(escribe tu correo aquí)'}`);
+    const phone = (CFG.yappy_phone||DEF_PHONE).replace(/[^\d]/g,'');
+    return `https://wa.me/${phone}?text=${msg}`;
+  }
+
+  function handleBuy(ev){
+    const btn = ev.target.closest('[data-buy]');
+    if(!btn) return;
+    ev.preventDefault(); ev.stopPropagation();
+    const plan = btn.getAttribute('data-buy') || 'mensual';
+
+    // Si ui.js está cargado, usa el modal
+    if (window.IngresoU && typeof IngresoU.openBuy==='function'){
+      IngresoU.openBuy(plan);
+      return;
+    }
+    // Fallback garantizado: ir a WhatsApp en la MISMA pestaña
+    location.href = buildWA(plan);
+  }
+
+  // Delegación: captura T0DOS los clicks en botones con data-buy
+  document.addEventListener('click', handleBuy, true);
+})();
+</script>
+<!-- ===== /HARDENER ===== -->
+
 <header class="header">
   <div class="container row">
     <div class="brand">IngresoU <span class="badge">Panamá</span></div>
@@ -34,7 +87,7 @@
 
       <div class="section">
         <div class="row">
-          <!-- Atajos a simuladores (requerirán sesión; si no, scrollean al login) -->
+          <!-- Estos requieren sesión (ui.js se encarga de scrollear al login si no hay) -->
           <button class="btn brand" data-preset="paa">PAA (UTP) — 2 secciones</button>
           <button class="btn" data-preset="pca">PCA (UP) — 2 secciones</button>
           <button class="btn" data-preset="pcg">PCG (UP) — 4 secciones</button>
@@ -46,7 +99,7 @@
       </div>
     </div>
 
-    <!-- Login rápido (funciona incluso sin ui.js) -->
+    <!-- Login rápido -->
     <div class="card pad">
       <h3>Acceso rápido</h3>
       <p class="p">Entra con tu <b>KEY</b> y correo. Si tu KEY no está redimida, la activamos automáticamente.</p>
@@ -63,9 +116,18 @@
 
       <div class="section">
         <table class="simple">
-          <tr><td>¿No tienes KEY?</td><td><button class="btn brand" data-buy="mensual">Comprar plan Mensual</button></td></tr>
-          <tr><td>¿Te llegó una KEY por WhatsApp?</td><td><a class="btn" href="/activate.html">Activar por link</a></td></tr>
-          <tr><td>Soporte</td><td><a class="btn ghost" href="mailto:soporte@ingresou.com">soporte@ingresou.com</a></td></tr>
+          <tr>
+            <td>¿No tienes KEY?</td>
+            <td><a class="btn brand" data-buy="mensual" href="#comprar">Comprar plan Mensual</a></td>
+          </tr>
+          <tr>
+            <td>¿Te llegó una KEY por WhatsApp?</td>
+            <td><a class="btn" href="/activate.html">Activar por link</a></td>
+          </tr>
+          <tr>
+            <td>Soporte</td>
+            <td><a class="btn ghost" href="mailto:soporte@ingresou.com">soporte@ingresou.com</a></td>
+          </tr>
         </table>
       </div>
     </div>
@@ -85,7 +147,7 @@
           <li>✔ Prácticas por módulo</li>
           <li>✔ Ranking nacional</li>
         </ul>
-        <button class="btn brand" data-buy="mensual">Comprar</button>
+        <a class="btn brand" data-buy="mensual" href="#comprar">Comprar</a>
       </div>
 
       <div class="card pad plan-card">
@@ -97,7 +159,7 @@
           <li>✔ Retro y avances</li>
           <li>✔ Soporte prioritario</li>
         </ul>
-        <button class="btn brand" data-buy="trimestral">Comprar</button>
+        <a class="btn brand" data-buy="trimestral" href="#comprar">Comprar</a>
       </div>
 
       <div class="card pad plan-card">
@@ -109,7 +171,7 @@
           <li>✔ Acceso a nuevos bancos</li>
           <li>✔ Bonos exclusivos</li>
         </ul>
-        <button class="btn brand" data-buy="anual">Comprar</button>
+        <a class="btn brand" data-buy="anual" href="#comprar">Comprar</a>
       </div>
     </div>
   </section>
@@ -122,7 +184,7 @@
   </footer>
 </main>
 
-<!-- MODAL COMPRA (lo usa ui.js, pero hay fallback si no carga) -->
+<!-- MODAL COMPRA (usado por ui.js si está cargado) -->
 <div class="modal-backdrop" style="display:none" onclick="(window.IngresoU&&IngresoU.closeBuy)?IngresoU.closeBuy():0">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="head">
@@ -145,36 +207,25 @@
 <!-- JS principal (si carga, usa modal y maneja presets con login) -->
 <script src="/assets/ui.js"></script>
 
-<!-- FALLBACK universal: comprar y presets aunque /assets/ui.js falle -->
+<!-- FALLBACK: login + precios + presets si ui.js fallara -->
 <script>
 (async function(){
-  /* ========== CONFIG pública (precios/moneda/teléfono) ========== */
-  let CFG = { currency:'PAB', yappy_phone:'+50760000000',
-              prices:{ mensual_cents:999, trimestral_cents:2499, anual_cents:6900 } };
-  try{
-    const r = await fetch('/api/public-config'); const j = await r.json();
-    if(j && j.ok){ CFG = j; }
-  }catch(_){ /* fallback */ }
+  // Cargar config para pintar precios si ui.js aún no lo hizo
+  let cfg = { currency:'PAB', prices:{mensual_cents:999,trimestral_cents:2499,anual_cents:6900} };
+  try{ const r=await fetch('/api/public-config'); const j=await r.json(); if(j&&j.ok) cfg=j; }catch(_){}
+  const fmt = (c)=> (c/100).toLocaleString('es-PA',{style:'currency',currency:cfg.currency||'PAB'});
+  const m=document.getElementById('price-mensual'); if(m && m.textContent==='—') m.textContent=fmt(cfg.prices.mensual_cents||0);
+  const t=document.getElementById('price-trimestral'); if(t && t.textContent==='—') t.textContent=fmt(cfg.prices.trimestral_cents||0);
+  const a=document.getElementById('price-anual'); if(a && a.textContent==='—') a.textContent=fmt(cfg.prices.anual_cents||0);
 
-  const phone = (CFG.yappy_phone || '+50760000000').replace(/[^\d]/g,'');
-  const p = CFG.prices||{};
-  const fmt = (c)=> (c/100).toLocaleString('es-PA',{style:'currency',currency:CFG.currency||'PAB'});
-
-  // Render de precios (por si ui.js no llegó a hacerlo)
-  const m=document.getElementById('price-mensual'); if(m) m.textContent=fmt(p.mensual_cents||0);
-  const t=document.getElementById('price-trimestral'); if(t) t.textContent=fmt(p.trimestral_cents||0);
-  const a=document.getElementById('price-anual'); if(a) a.textContent=fmt(p.anual_cents||0);
-
-  /* ========== LOGIN inline (independiente de ui.js) ========== */
+  // Login inline (independiente de ui.js)
   async function quickLogin(e){
     e.preventDefault?.();
     const email=(document.getElementById('login-email')?.value||'').trim().toLowerCase();
     const code =(document.getElementById('login-code')?.value||'').trim().toUpperCase();
     const out=document.getElementById('login-out');
-    const say=(m,bad=false)=>{ if(out){ out.textContent=m; out.className='inline-note '+(bad?'bad':'good'); } };
-
+    const say=(m,bad)=>{ if(out){ out.textContent=m; out.className='inline-note '+(bad?'bad':'good'); } };
     if(!email||!code) return say('Completa correo y KEY.',true);
-
     try{
       const send = async (url, body) => {
         const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -194,103 +245,22 @@
         localStorage.setItem('ingresou_expires_at', s.expires_at||'');
         say('¡Listo! Redirigiendo…');
         const next=new URLSearchParams(location.search).get('next');
-        setTimeout(()=> location.href= next || '/premium.html', 300);
-      } else {
-        say(r?.error||'Error de acceso', true);
-      }
-    }catch(err){
-      say('No se pudo conectar. Intenta de nuevo.', true);
-    }
+        setTimeout(()=> location.href= next || '/premium.html', 250);
+      } else { say(r?.error||'Error de acceso', true); }
+    }catch(_){ say('No se pudo conectar. Intenta de nuevo.', true); }
   }
-  const f=document.getElementById('login-form');
-  if(f){ f.addEventListener('submit', quickLogin); }
+  const f=document.getElementById('login-form'); if(f){ f.addEventListener('submit', quickLogin); }
 
-  /* ========== BUY universal: con ui.js (modal) o directo a WhatsApp ========== */
-  function waLink(plan){
-    const cents = plan==='anual' ? p.anual_cents : plan==='trimestral' ? p.trimestral_cents : p.mensual_cents;
-    const amount = fmt(cents||0);
-    const email=(localStorage.getItem('ingresou_email')||'').toLowerCase();
-    const msg = encodeURIComponent(`Hola, quiero comprar el plan ${plan.toUpperCase()} (${amount}) para IngresoU. Mi correo: ${email||'(escribe tu correo aquí)'}`);
-    return `https://wa.me/${phone}?text=${msg}`;
-  }
-  document.querySelectorAll('[data-buy]').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      const plan = el.getAttribute('data-buy');
-      if(window.IngresoU && IngresoU.openBuy){
-        IngresoU.openBuy(plan); // Modal bonito
-      } else {
-        window.open(waLink(plan), '_blank'); // Fallback directo
-      }
-    });
-  });
-
-  /* ========== PRESETS universal: si no hay sesión, scrollea al login ========== */
+  // Presets: si no hay sesión, scrollean al login
   function haveSession(){ return !!(localStorage.getItem('ingresou_email') && localStorage.getItem('ingresou_key')); }
-  function scrollToLogin(){ const form=document.getElementById('login-form'); if(form){ form.scrollIntoView({behavior:'smooth',block:'start'}); const c=document.getElementById('login-code'); c&&c.focus(); } }
+  function scrollToLogin(){ const form=document.getElementById('login-form'); if(form){ form.scrollIntoView({behavior:'smooth'}); const c=document.getElementById('login-code'); c&&c.focus(); } }
   document.querySelectorAll('[data-preset]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const mode=btn.getAttribute('data-preset');
       if(haveSession()){ location.href=`/exam.html?mode=${encodeURIComponent(mode)}`; }
-      else { scrollToLogin(); }
+      else{ scrollToLogin(); }
     });
   });
-
-})();
-</script>
-  <script>
-/* ==== FALLBACK DEFINITIVO PARA COMPRAR (funciona sí o sí) ==== */
-(function(){
-  // Fallbacks hardcodeados por si /api/public-config o ui.js fallan
-  const DEF_PHONE   = '+50760000000';
-  const DEF_CURR    = 'PAB';
-  const DEF_PRICES  = { mensual_cents: 999, trimestral_cents: 2499, anual_cents: 6900 };
-
-  // Helper: formatea B/. a partir de cents
-  function money(cents, curr){
-    return (Number(cents||0)/100).toLocaleString('es-PA',{ style:'currency', currency: curr || DEF_CURR });
-  }
-  // Helper: construye link de WhatsApp
-  function buildWA(plan, curr, prices, phone){
-    const cents = plan === 'anual' ? (prices.anual_cents||0)
-                : plan === 'trimestral' ? (prices.trimestral_cents||0)
-                : (prices.mensual_cents||0);
-    const amount = money(cents, curr);
-    const email  = (localStorage.getItem('ingresou_email')||'').toLowerCase();
-    const msg = encodeURIComponent(
-      `Hola, quiero comprar el plan ${plan.toUpperCase()} (${amount}) para IngresoU. `+
-      `Mi correo: ${email || '(escribe tu correo aquí)'}`
-    );
-    const cleanPhone = (phone||DEF_PHONE).replace(/[^\d]/g,'');
-    return `https://wa.me/${cleanPhone}?text=${msg}`;
-  }
-
-  // Leemos config pública si está disponible (no bloquea si falla)
-  let CFG = { currency: DEF_CURR, yappy_phone: DEF_PHONE, prices: DEF_PRICES };
-  (async ()=>{
-    try{
-      const r = await fetch('/api/public-config', {cache:'no-store'});
-      const j = await r.json();
-      if (j && j.ok) CFG = j;
-    } catch(_) { /* seguimos con defaults */ }
-  })();
-
-  // DELEGACIÓN DE EVENTOS: captura clicks en cualquier [data-buy]
-  document.addEventListener('click', function(ev){
-    const tgt = ev.target.closest('[data-buy]');
-    if(!tgt) return;
-
-    ev.preventDefault();
-    const plan = tgt.getAttribute('data-buy') || 'mensual';
-
-    // Si ui.js cargó y expuso modal → úsalo
-    if (window.IngresoU && typeof IngresoU.openBuy === 'function') {
-      IngresoU.openBuy(plan);
-      return;
-    }
-    // Fallback garantizado → ir directo a WhatsApp en la MISMA pestaña (sin bloqueos)
-    const url = buildWA(plan, CFG.currency, CFG.prices||DEF_PRICES, CFG.yappy_phone);
-    window.location.href = url;
-  }, {capture:true});
 })();
 </script>
 
