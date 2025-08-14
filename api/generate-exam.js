@@ -6,7 +6,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE
 );
 
-// Utilidad para barajar en memoria
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -15,7 +14,6 @@ function shuffle(arr) {
   return arr;
 }
 
-// Mapa de simuladores
 function getSpec(modeRaw) {
   const mode = String(modeRaw || '').toLowerCase();
   if (mode === 'pca') {
@@ -42,7 +40,7 @@ function getSpec(modeRaw) {
       totalTimeMin: 120
     };
   }
-  // default PAA
+  // por defecto PAA (UTP)
   return {
     exam: 'PAA',
     subject: 'UTP',
@@ -60,20 +58,17 @@ export default async function handler(req, res) {
       return res.status(405).json({ ok: false, error: 'METHOD_NOT_ALLOWED' });
     }
 
-    // body: { count_per_section, difficulty, variant }
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const url = new URL(req.headers.referer || req.headers.origin || 'http://dummy.local');
-    const mode = url.searchParams.get('mode') || body.mode || 'paa';
-    const spec = getSpec(mode);
+    const url = new URL(req.url, 'http://localhost'); // fallback para leer query si viene
+    const mode = body.mode || url.searchParams.get('mode') || 'paa';
     const countPerSection = Math.max(1, parseInt(body.count_per_section || 10, 10));
 
-    // Para cada sección, primero contamos
-    const missing = [];
-    const perTopicQuestions = {};
+    const spec = getSpec(mode);
 
+    // Verificamos disponibilidad por tema
+    const missing = [];
     for (const sec of spec.sections) {
-      // Contemos exacto
-      const { data: countData, count, error: countErr } = await supabase
+      const { count, error } = await supabase
         .from('questions')
         .select('id', { count: 'exact', head: true })
         .eq('exam', spec.exam)
@@ -81,8 +76,8 @@ export default async function handler(req, res) {
         .eq('topic', sec.topic)
         .eq('active', true);
 
-      if (countErr) {
-        return res.status(500).json({ ok: false, error: 'SERVER_ERROR', detail: countErr.message });
+      if (error) {
+        return res.status(500).json({ ok: false, error: 'SERVER_ERROR', detail: error.message });
       }
       if ((count || 0) < countPerSection) {
         missing.push({ topic: sec.topic, have: count || 0, need: countPerSection });
@@ -90,15 +85,13 @@ export default async function handler(req, res) {
     }
 
     if (missing.length) {
-      return res.status(200).json({
-        ok: false,
-        error: 'BANK_SHORTAGE',
-        missing
-      });
+      return res.status(200).json({ ok: false, error: 'BANK_SHORTAGE', missing, mode, exam: spec.exam, subject: spec.subject });
     }
 
-    // Traemos un “pool” amplio por tema (hasta 200) y barajamos en memoria
+    // Traemos pool y barajamos en memoria
+    const sections = [];
     for (const sec of spec.sections) {
+      const poolSize = Math.max(countPerSection * 4, 60);
       const { data, error } = await supabase
         .from('questions')
         .select('id, prompt, choices, answer_index, explanation, topic')
@@ -107,36 +100,23 @@ export default async function handler(req, res) {
         .eq('topic', sec.topic)
         .eq('active', true)
         .order('created_at', { ascending: false })
-        .limit(Math.max(countPerSection * 4, 60)); // pool
+        .limit(poolSize);
 
       if (error) {
         return res.status(500).json({ ok: false, error: 'SERVER_ERROR', detail: error.message });
       }
-      const pool = shuffle(data || []);
-      perTopicQuestions[sec.topic] = pool.slice(0, countPerSection).map((q, idx) => ({
-        id: q.id,
-        n: idx + 1,
-        prompt: q.prompt,
-        choices: q.choices,
-        answer_index: q.answer_index,
-        explanation: q.explanation,
-        topic: q.topic
+      const items = shuffle(data || []).slice(0, countPerSection).map((q, i) => ({
+        id: q.id, n: i + 1, prompt: q.prompt,
+        choices: q.choices, answer_index: q.answer_index,
+        explanation: q.explanation, topic: q.topic
       }));
-    }
 
-    // Construimos respuesta final
-    const sections = spec.sections.map(sec => ({
-      title: sec.title,
-      topic: sec.topic,
-      count: countPerSection,
-      items: perTopicQuestions[sec.topic] || []
-    }));
+      sections.push({ title: sec.title, topic: sec.topic, count: countPerSection, items });
+    }
 
     return res.status(200).json({
       ok: true,
-      exam: spec.exam,
-      subject: spec.subject,
-      mode,
+      mode, exam: spec.exam, subject: spec.subject,
       sections,
       total_time_seconds: spec.totalTimeMin * 60
     });
@@ -144,3 +124,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ ok: false, error: 'SERVER_ERROR', detail: e.message });
   }
 }
+
