@@ -1,103 +1,146 @@
 // /api/generate-exam.js
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
-const supa = (SUPABASE_URL && SUPABASE_SERVICE_ROLE)
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE)
-  : null;
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE
+);
 
-const MAP = {
-  paa: ['lectura','algebra','logico'],
-  pca: ['espanol','matematicas'], // ojo: en DB puedes tener 'espanol' como 'lectura'; se normaliza abajo
-  pcg: ['biologia','quimica','fisica','matematicas']
-};
-
-function norm(t){
-  t = (t||'').toLowerCase();
-  if (t==='espanol' || t==='español') return 'lectura';
-  if (t==='logico'||t==='razonamiento') return 'logico';
-  if (t==='matemáticas'||t==='matematicas'||t==='algebra') return 'algebra';
-  return t;
+// Utilidad para barajar en memoria
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
-function timeByMode(m){ return (m==='paa')?120*60 : (m==='pca')?120*60 : (m==='pcg')?120*60 : 60*60; }
-function sectionsByMode(m){ return (m==='pcg')?4 : (m==='paa'||m==='pca')?2 : 1; }
-
-async function fetchFromDB(topic, n){
-  if (!supa) return [];
-  const { data, error } = await supa
-    .from('questions')
-    .select('prompt,choices,answer_index,explanation,topic,active')
-    .eq('active', true)
-    .eq('topic', topic)
-    .limit(n*2);
-  if (error || !data?.length) return [];
-  // barajar y cortar
-  for (let i=data.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [data[i],data[j]]=[data[j],data[i]]; }
-  return data.slice(0,n).map(r=>({
-    prompt:r.prompt,
-    choices: Array.isArray(r.choices)? r.choices : r.choices?.options || r.choices,
-    answer_index:r.answer_index,
-    explanation:r.explanation||'',
-    topic:topic
-  }));
+// Mapa de simuladores
+function getSpec(modeRaw) {
+  const mode = String(modeRaw || '').toLowerCase();
+  if (mode === 'pca') {
+    return {
+      exam: 'PCA',
+      subject: 'UP',
+      sections: [
+        { topic: 'lectura', title: 'Español' },
+        { topic: 'algebra', title: 'Álgebra' }
+      ],
+      totalTimeMin: 120
+    };
+  }
+  if (mode === 'pcg') {
+    return {
+      exam: 'PCG',
+      subject: 'UP',
+      sections: [
+        { topic: 'biologia', title: 'Biología' },
+        { topic: 'quimica', title: 'Química' },
+        { topic: 'fisica', title: 'Física' },
+        { topic: 'algebra', title: 'Álgebra' }
+      ],
+      totalTimeMin: 120
+    };
+  }
+  // default PAA
+  return {
+    exam: 'PAA',
+    subject: 'UTP',
+    sections: [
+      { topic: 'algebra', title: 'Álgebra' },
+      { topic: 'lectura', title: 'Lectura' }
+    ],
+    totalTimeMin: 120
+  };
 }
 
-// importamos localmente el generador de preguntas (misma lógica que /api/generate-questions)
-async function localGen(topic, count, difficulty, seed){
-  const r = await fetch(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/api/generate-questions` : 'http://localhost:3000/api/generate-questions', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ topic, count, difficulty, seed })
-  }).then(r=>r.json()).catch(()=>[]);
-  return Array.isArray(r)? r : [];
-}
-
-export default async function handler(req,res){
-  try{
-    if (req.method!=='POST') return res.status(405).json({ok:false,error:'METHOD'});
-    const { mode='paa', difficulty='medium', count_per_section=10, variant=Date.now()%1e6 } = req.body||{};
-    const m = (mode||'paa').toLowerCase();
-    const topics = (MAP[m]||['algebra']).map(norm);
-    const sections = sectionsByMode(m);
-    const perSec = Math.max(5, Math.min(100, Number(count_per_section)||10));
-    const seed = Number(variant)||0;
-
-    const outSections = [];
-    for (let s=0; s<sections; s++){
-      // reparto simple entre tópicos
-      const title =
-        (m==='paa') ? (s===0?'Lectura':'Matemáticas y Lógico') :
-        (m==='pca') ? (s===0?'Español':'Matemáticas') :
-        `Sección ${s+1}`;
-
-      const qs = [];
-      const each = Math.max(1, Math.round(perSec / topics.length));
-      for (const t of topics){
-        let chunk = await fetchFromDB(t, each);
-        if (chunk.length < each){
-          const faltan = each - chunk.length;
-          const gen = await localGen(t, faltan, difficulty, seed + s);
-          chunk = chunk.concat(gen);
-        }
-        qs.push(...chunk.slice(0, each));
-      }
-      while (qs.length < perSec){
-        // relleno final si aún falta
-        const gen = await localGen('algebra', 1, difficulty, seed+s+qs.length);
-        qs.push(...gen);
-      }
-      outSections.push({ title, questions: qs.slice(0, perSec) });
+export default async function handler(req, res) {
+  try {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ ok: false, error: 'METHOD_NOT_ALLOWED' });
     }
 
+    // body: { count_per_section, difficulty, variant }
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    const url = new URL(req.headers.referer || req.headers.origin || 'http://dummy.local');
+    const mode = url.searchParams.get('mode') || body.mode || 'paa';
+    const spec = getSpec(mode);
+    const countPerSection = Math.max(1, parseInt(body.count_per_section || 10, 10));
+
+    // Para cada sección, primero contamos
+    const missing = [];
+    const perTopicQuestions = {};
+
+    for (const sec of spec.sections) {
+      // Contemos exacto
+      const { data: countData, count, error: countErr } = await supabase
+        .from('questions')
+        .select('id', { count: 'exact', head: true })
+        .eq('exam', spec.exam)
+        .eq('subject', spec.subject)
+        .eq('topic', sec.topic)
+        .eq('active', true);
+
+      if (countErr) {
+        return res.status(500).json({ ok: false, error: 'SERVER_ERROR', detail: countErr.message });
+      }
+      if ((count || 0) < countPerSection) {
+        missing.push({ topic: sec.topic, have: count || 0, need: countPerSection });
+      }
+    }
+
+    if (missing.length) {
+      return res.status(200).json({
+        ok: false,
+        error: 'BANK_SHORTAGE',
+        missing
+      });
+    }
+
+    // Traemos un “pool” amplio por tema (hasta 200) y barajamos en memoria
+    for (const sec of spec.sections) {
+      const { data, error } = await supabase
+        .from('questions')
+        .select('id, prompt, choices, answer_index, explanation, topic')
+        .eq('exam', spec.exam)
+        .eq('subject', spec.subject)
+        .eq('topic', sec.topic)
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(Math.max(countPerSection * 4, 60)); // pool
+
+      if (error) {
+        return res.status(500).json({ ok: false, error: 'SERVER_ERROR', detail: error.message });
+      }
+      const pool = shuffle(data || []);
+      perTopicQuestions[sec.topic] = pool.slice(0, countPerSection).map((q, idx) => ({
+        id: q.id,
+        n: idx + 1,
+        prompt: q.prompt,
+        choices: q.choices,
+        answer_index: q.answer_index,
+        explanation: q.explanation,
+        topic: q.topic
+      }));
+    }
+
+    // Construimos respuesta final
+    const sections = spec.sections.map(sec => ({
+      title: sec.title,
+      topic: sec.topic,
+      count: countPerSection,
+      items: perTopicQuestions[sec.topic] || []
+    }));
+
     return res.status(200).json({
-      ok:true,
-      mode:m,
-      duration: timeByMode(m),
-      seed,
-      sections: outSections
+      ok: true,
+      exam: spec.exam,
+      subject: spec.subject,
+      mode,
+      sections,
+      total_time_seconds: spec.totalTimeMin * 60
     });
-  }catch(e){
-    return res.status(200).json({ ok:false, sections:[] });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'SERVER_ERROR', detail: e.message });
   }
 }
