@@ -98,4 +98,5 @@ table.simple td:last-child{border-radius:0 10px 10px 0;text-align:right}
 .opt .tick{ opacity:0; color:var(--brand-2); font-weight:900; }
 .opt input:checked + .txt{ color:#fff; }
 .opt input:checked ~ .tick{ opacity:1; }
+<link rel="stylesheet" href="/assets/styles.css">
 
