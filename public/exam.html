@@ -311,6 +311,49 @@ document.getElementById('btnGen').onclick = generate;
 })();
 </script>
 <script src="/assets/onboarding.js"></script>
+<!-- (opcional) si ya agregaste onboarding: -->
+<script src="/assets/onboarding.js"></script>
+
+<!-- Bonito Mode: DEBE ir como el ÚLTIMO <script> antes de </body> -->
+<script>
+(function beautifyExam(){
+  function run(){
+    document.querySelectorAll('h2, h3').forEach(h=>h.classList.add('section-title'));
+    const blocks = Array.from(document.querySelectorAll('.question, .q, li, .pregunta, .pregunta-item'))
+      .filter(el => !el.closest('table, thead, tbody, tfoot, .table, .ranking') && el.querySelector('input[type=radio]'));
+
+    blocks.forEach(q=>{
+      if(!q.classList.contains('q-card')) q.classList.add('q-card');
+      const strong = q.querySelector('b,strong');
+      if (strong && !q.querySelector('.q-title')){
+        const h = document.createElement('div');
+        h.className='q-title'; h.textContent = strong.textContent.trim();
+        strong.replaceWith(h);
+      }
+      const radios = Array.from(q.querySelectorAll('input[type=radio]'));
+      radios.forEach(r=>{
+        let lab = r.closest('label');
+        if(!lab){
+          lab = document.createElement('label');
+          const txt = (r.nextSibling && r.nextSibling.nodeType===3) ? r.nextSibling.nodeValue.trim() : '';
+          lab.textContent = txt;
+          r.parentNode.insertBefore(lab, r.nextSibling);
+        }
+        lab.classList.add('opt');
+        lab.addEventListener('click', ()=>{
+          radios.forEach(x=> x.closest('label')?.classList.remove('sel'));
+          r.checked = true;
+          lab.classList.add('sel');
+        });
+      });
+    });
+  }
+  document.addEventListener('DOMContentLoaded', run);
+  setTimeout(run, 200);
+  setTimeout(run, 800);
+})();
+</script>
+</body>
 
 </body>
 </html>
