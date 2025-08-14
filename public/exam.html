@@ -1,169 +1,97 @@
-<script>
-(() => {
-  const qs = (sel, el = document) => el.querySelector(sel);
-  const qsa = (sel, el = document) => [...el.querySelectorAll(sel)];
-  const fmt = (n) => String(n).padStart(2, '0');
-
-  // UI
-  const chips = qsa('[data-preset]');                 // chips: PAA/PCA/PCG
-  const diffSel = qs('#diffSelect') || qs('select[name="difficulty"]');
-  const countInput = qs('#countPerSection') || qs('input[name="countPerSection"]');
-  const generateBtn = qs('#btnGenerate') || qs('button[data-generate]');
-  const totalTimeEl = qs('[data-total]');
-  const remainingEl = qs('[data-remaining]');
-  const panel = qs('#examPanel') || qs('[data-exam-panel]');
-  const msgBox = qs('#examMsg') || qs('[data-exam-msg]');
-
-  let mode = new URLSearchParams(location.search).get('mode') || 'paa';
-  let timerId = null;
-  let deadline = null;
-
-  // Presets oficiales
-  const PRESETS = {
-    paa: { label: 'PAA',  sections: 2, time: 120, count: 30, topics: ['algebra','lectura'] }, // 30+30
-    pca: { label: 'PCA',  sections: 2, time: 120, count: 50, topics: ['lectura','algebra'] }, // 50+50 (español->lectura)
-    pcg: { label: 'PCG',  sections: 4, time: 120, count: 25, topics: ['biologia','quimica','fisica','algebra'] }, // 25×4
-  };
-
-  // ---------- helpers ----------
-  function showMsg(text, tone = 'info') {
-    if (!msgBox) return;
-    msgBox.innerHTML = text;
-    msgBox.className = ''; // reset
-    msgBox.classList.add('msg', tone); // .msg.info/.msg.warn/.msg.error
-  }
-  function clearMsg() {
-    if (!msgBox) return;
-    msgBox.innerHTML = '';
-    msgBox.className = 'msg';
-  }
-  function resetTimer() {
-    if (timerId) clearInterval(timerId);
-    timerId = null; deadline = null;
-    if (remainingEl) remainingEl.textContent = '—';
-  }
-  function startTimer(mins) {
-    resetTimer();
-    deadline = Date.now() + mins*60*1000;
-    timerId = setInterval(() => {
-      const left = Math.max(0, deadline - Date.now());
-      const m = Math.floor(left/60000), s = Math.floor((left%60000)/1000);
-      if (remainingEl) remainingEl.textContent = `${fmt(m)}:${fmt(s)}`;
-      if (left <= 0) { clearInterval(timerId); timerId = null; }
-    }, 250);
-  }
-  function setPreset(newMode) {
-    mode = newMode;
-    const p = PRESETS[mode];
-    if (totalTimeEl) totalTimeEl.textContent = `${fmt(p.time)}:00`;
-    if (countInput) countInput.value = p.count; // por defecto oficial (si falta banco, mostraremos error)
-    // Marca chip activo visualmente
-    chips.forEach(c => c.classList.toggle('active', c.dataset.preset === mode));
-  }
-
-  // Render
-  function renderExam(sections) {
-    if (!panel) return;
-    const html = sections.map((sec, idx) => {
-      const qhtml = sec.questions.map((q, i) => {
-        const opts = q.choices.map((c, j) => `
-          <label class="opt">
-            <input type="radio" name="q-${sec.key}-${i}" value="${j}"> <span>${c}</span>
-          </label>
-        `).join('');
-        return `
-          <div class="q-card">
-            <div class="q-title">${i+1}. ${q.prompt}</div>
-            <div class="q-opts">${opts}</div>
-          </div>
-        `;
-      }).join('');
-      return `
-        <section class="sec">
-          <div class="sec-head">
-            <h3>${sec.title}</h3>
-            <span class="pill">${sec.questions.length} preguntas</span>
-          </div>
-          ${qhtml}
-        </section>
-      `;
-    }).join('');
-    panel.innerHTML = html;
-  }
-
-  // Llamada al backend
-  async function generateExam() {
-    clearMsg();
-    if (!PRESETS[mode]) setPreset('paa');
-
-    const p = PRESETS[mode];
-    const difficulty = (diffSel && diffSel.value) || 'medium';
-    const count = parseInt((countInput && countInput.value) || `${p.count}`, 10) || p.count;
-
-    // Petición simple al endpoint unificado
-    let resp;
-    try {
-      resp = await fetch('/api/generate-exam', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({
-          mode,
-          difficulty,
-          count_per_section: count
-        })
-      });
-    } catch (e) {
-      showMsg('Error de red. Verifica tu conexión o tu despliegue.', 'error');
-      return;
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IngresoU — Simulador</title>
+  <style>
+    :root{
+      --bg:#0c111b; --card:#111827; --muted:#9aa4b2; --text:#e6edf3; --brand:#22c55e;
+      --chip:#0b1220; --chipActive:#1f2937; --primary:#3b82f6; --primary-2:#1d4ed8;
+      --ok:#34d399; --warn:#f59e0b; --err:#ef4444; --pill:#0b1730;
+      --grad1:#0e1726; --grad2:#0b1933; --q:#101726;
     }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    a{color:#9bd1ff;text-decoration:none}
+    .wrap{max-width:1100px;margin:0 auto;padding:24px 16px 56px}
 
-    let data;
-    try { data = await resp.json(); } catch {
-      showMsg('Respuesta no válida del servidor. Revisa logs de Vercel.', 'error');
-      return;
-    }
+    /* Header */
+    .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .brand{display:flex;gap:10px;align-items:center}
+    .logo{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:10px;
+      background:linear-gradient(135deg,#0ea5e9, #22c55e)}
+    .logo b{color:#0b1220}
+    .brand h1{font-size:18px;margin:0}
+    nav{display:flex;gap:14px;align-items:center}
+    nav a{padding:8px 10px;border-radius:8px;color:#cfe7ff}
+    nav a.active{background:#0d1b2a;color:#fff}
+    .badges{display:flex;gap:8px}
+    .badge{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#0a1324;color:#a9c9ff;font-size:13px}
 
-    if (!data.ok) {
-      // Mensajes claros cuando falta banco
-      if (data.error === 'INSUFFICIENT_BANK') {
-        const need = count;
-        showMsg(`
-          <b>Banco insuficiente</b> para <b>${p.label}</b>.<br>
-          • Intenta bajar “Preguntas por sección” (ej., 8).<br>
-          • O agrega más preguntas con SQL (recomendado).<br>
-          <small>Detalle: ${data.detail || ''}</small>
-        `, 'warn');
-      } else {
-        showMsg(`No se pudo generar el examen: ${data.error || 'Error'}`, 'error');
-      }
-      return;
-    }
+    /* Blocks */
+    .card{background:linear-gradient(180deg,var(--grad1),var(--grad2));border:1px solid #1f2937;border-radius:16px;padding:18px;margin:14px 0}
+    .card h2{margin:0 0 8px 0}
 
-    // Render & timer
-    renderExam(data.sections || []);
-    if (totalTimeEl) totalTimeEl.textContent = `${fmt(p.time)}:00`;
-    startTimer(p.time);
-    showMsg(`${p.label} listo. ¡Éxitos!`, 'info');
-  }
+    .chips{display:flex;gap:10px;flex-wrap:wrap}
+    .chip{background:var(--chip);border:1px solid #1f2937;color:#bcd2ff;border-radius:999px;padding:10px 14px;font-weight:600;cursor:pointer}
+    .chip.active{background:var(--chipActive);color:#fff;border-color:#2a3a58}
+    .chip:hover{transform:translateY(-1px)}
 
-  // Eventos
-  chips.forEach(chip => {
-    chip.addEventListener('click', () => {
-      setPreset(chip.dataset.preset);
-      // Preajustar el count oficial, pero no generamos aún para que el usuario vea el valor
-      const p = PRESETS[mode];
-      if (countInput) countInput.value = p.count;
-      clearMsg(); resetTimer(); panel && (panel.innerHTML = '');
-      // Auto-intento: si quieres que dispare de una, descomenta:
-      // generateExam();
-    });
-  });
-  generateBtn && generateBtn.addEventListener('click', generateExam);
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .pill{display:inline-flex;align-items:center;gap:6px;background:#0f1a30;border:1px solid #22314f;border-radius:999px;padding:6px 10px;color:#a5c7ff;font-size:13px}
+    .control{display:flex;flex-direction:column;gap:6px}
+    select,input[type="number"]{background:#0d1424;color:#dbe8ff;border:1px solid #23314b;border-radius:10px;padding:10px 12px;min-width:160px}
+    .btn{background:linear-gradient(180deg,var(--primary),var(--primary-2));border:1px solid #2748a8;border-radius:10px;color:#fff;font-weight:700;letter-spacing:.2px;padding:12px 16px;cursor:pointer}
+    .btn:hover{filter:brightness(1.1)}
+    .btn:active{transform:translateY(1px)}
 
-  // Inicializa por query param:
-  setPreset(mode);
-})();
-</script>
+    /* Messages */
+    .msg{margin-top:10px}
+    .msg a{color:#9bd1ff;text-decoration:underline}
+    .msg.ok{color:var(--ok)} .msg.warn{color:#ffd166} .msg.error{color:#ff8b8b}
+
+    /* Exam panel */
+    .sec{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:14px;margin:14px 0}
+    .sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .sec h3{margin:0;font-size:17px}
+    .q-card{background:var(--q);border:1px solid #1a2641;border-radius:12px;padding:14px;margin:10px 0}
+    .q-title{font-weight:700;margin-bottom:8px}
+    .q-opts{display:grid;gap:8px}
+    .opt{display:flex;gap:8px;align-items:flex-start}
+    .opt input{margin-top:3px}
+
+    /* Footer label */
+    .helper{color:var(--muted);font-size:13px;padding:8px 10px;border:1px dashed #2c3b5a;border-radius:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <span class="logo"><b>U</b></span>
+        <h1>IngresoU</h1>
+      </div>
+      <nav>
+        <a href="/index.html">Inicio</a>
+        <a href="/premium.html">Premium</a>
+        <a href="/leaderboard.html">Ranking</a>
+        <a href="/exam.html" class="active">Examen</a>
+      </nav>
+      <div class="badges">
+        <span class="badge">🔥 Racha: <b id="streakVal">1</b></span>
+        <span class="badge">⭐ XP: <b id="xpVal">0</b></span>
+      </div>
+    </header>
+
+    <!-- SIMULADORES -->
+    <section class="card">
+      <h2>Simuladores oficiales</h2>
+      <div class="chips">
+        <button class="chip" data-preset="paa">PAA (UTP) — 2 secciones, 60+60 min</button>
+        <button class="chip" data-preset="pca">PCA (UP) — 2 secciones, 120 min</button>
+        <button class="chip" data-preset=
+
 
 
 
