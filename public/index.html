@@ -5,13 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>IngresoU — Prepárate para UTP y Universidad de Panamá</title>
   <link rel="stylesheet" href="/assets/styles.css"/>
-  <!-- Fallback mínimo si el CSS falla -->
-  <style>noscript{display:block;color:#fff}</style>
+  <meta name="color-scheme" content="dark light"/>
 </head>
 <body>
 <header class="header">
   <div class="container row">
-    <div class="brand">IngresoU <span class="badge">Beta Panamá</span></div>
+    <div class="brand">IngresoU <span class="badge">Panamá</span></div>
     <nav class="nav">
       <a href="/index.html">Inicio</a>
       <a href="/premium.html">Premium</a>
@@ -35,6 +34,7 @@
 
       <div class="section">
         <div class="row">
+          <!-- Atajos a simuladores (requerirán sesión; si no, scrollean al login) -->
           <button class="btn brand" data-preset="paa">PAA (UTP) — 2 secciones</button>
           <button class="btn" data-preset="pca">PCA (UP) — 2 secciones</button>
           <button class="btn" data-preset="pcg">PCG (UP) — 4 secciones</button>
@@ -46,10 +46,10 @@
       </div>
     </div>
 
-    <!-- Login rápido -->
+    <!-- Login rápido (funciona incluso sin ui.js) -->
     <div class="card pad">
       <h3>Acceso rápido</h3>
-      <p class="p">Entra con tu <b>KEY</b> y tu correo. Si tu KEY no está redimida, la activamos automáticamente.</p>
+      <p class="p">Entra con tu <b>KEY</b> y correo. Si tu KEY no está redimida, la activamos automáticamente.</p>
       <form id="login-form" class="section">
         <label>Correo</label>
         <input id="login-email" class="input" type="email" placeholder="tu@correo.com" required/>
@@ -63,7 +63,7 @@
 
       <div class="section">
         <table class="simple">
-          <tr><td>¿No tienes KEY?</td><td><button class="btn" onclick="IngresoU.openBuy('mensual')">Comprar plan Mensual</button></td></tr>
+          <tr><td>¿No tienes KEY?</td><td><button class="btn brand" data-buy="mensual">Comprar plan Mensual</button></td></tr>
           <tr><td>¿Te llegó una KEY por WhatsApp?</td><td><a class="btn" href="/activate.html">Activar por link</a></td></tr>
           <tr><td>Soporte</td><td><a class="btn ghost" href="mailto:soporte@ingresou.com">soporte@ingresou.com</a></td></tr>
         </table>
@@ -75,8 +75,8 @@
   <section class="section">
     <h3>Planes</h3>
     <div class="grid-3">
-      <div class="card pad">
-        <div class="tag">Recomendado</div>
+      <div class="card pad plan-card">
+        <div class="plan-badge">Recomendado</div>
         <h4>Mensual</h4>
         <div class="price" id="price-mensual">—</div>
         <p class="sub">Acceso completo por 30 días</p>
@@ -85,10 +85,10 @@
           <li>✔ Prácticas por módulo</li>
           <li>✔ Ranking nacional</li>
         </ul>
-        <div class="row"><button class="btn brand" onclick="IngresoU.openBuy('mensual')">Comprar</button></div>
+        <button class="btn brand" data-buy="mensual">Comprar</button>
       </div>
 
-      <div class="card pad">
+      <div class="card pad plan-card">
         <h4>Trimestral</h4>
         <div class="price" id="price-trimestral">—</div>
         <p class="sub">Ahorra más con 3 meses</p>
@@ -97,10 +97,10 @@
           <li>✔ Retro y avances</li>
           <li>✔ Soporte prioritario</li>
         </ul>
-        <div class="row"><button class="btn" onclick="IngresoU.openBuy('trimestral')">Comprar</button></div>
+        <button class="btn brand" data-buy="trimestral">Comprar</button>
       </div>
 
-      <div class="card pad">
+      <div class="card pad plan-card">
         <h4>Anual</h4>
         <div class="price" id="price-anual">—</div>
         <p class="sub">12 meses de acceso</p>
@@ -109,7 +109,7 @@
           <li>✔ Acceso a nuevos bancos</li>
           <li>✔ Bonos exclusivos</li>
         </ul>
-        <div class="row"><button class="btn" onclick="IngresoU.openBuy('anual')">Comprar</button></div>
+        <button class="btn brand" data-buy="anual">Comprar</button>
       </div>
     </div>
   </section>
@@ -122,19 +122,19 @@
   </footer>
 </main>
 
-<!-- MODAL COMPRA -->
-<div class="modal-backdrop" onclick="IngresoU.closeBuy()">
+<!-- MODAL COMPRA (lo usa ui.js, pero hay fallback si no carga) -->
+<div class="modal-backdrop" style="display:none" onclick="(window.IngresoU&&IngresoU.closeBuy)?IngresoU.closeBuy():0">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="head">
       <strong>Finaliza tu compra con Yappy</strong>
-      <button class="btn ghost" onclick="IngresoU.closeBuy()">Cerrar</button>
+      <button class="btn ghost" onclick="(window.IngresoU&&IngresoU.closeBuy)?IngresoU.closeBuy():0">Cerrar</button>
     </div>
     <div class="body">
       <div class="kv"><div class="k">Plan</div><div class="v" id="buy-plan">—</div></div>
       <div class="kv"><div class="k">Monto</div><div class="v" id="buy-amount">—</div></div>
       <div class="kv"><div class="k">Comercio</div><div class="v" id="buy-display">IngresoU</div></div>
       <div class="kv"><div class="k">Tu correo</div><div class="v"><input id="buy-email" class="input" placeholder="tu@correo.com"/></div></div>
-      <p class="inline-note">💡 Tras pagar, te enviaremos tu KEY o un enlace de activación. Si ya pagaste, responde al WhatsApp con tu correo.</p>
+      <p class="inline-note">Tras pagar, te enviamos tu KEY o link de activación por WhatsApp/Correo.</p>
     </div>
     <div class="foot">
       <a id="buy-wa" class="btn brand" target="_blank" rel="noopener">Pagar / confirmar por WhatsApp</a>
@@ -142,13 +142,101 @@
   </div>
 </div>
 
-<!-- JS -->
+<!-- JS principal (si carga, usa modal y maneja presets con login) -->
 <script src="/assets/ui.js"></script>
-<!-- Fallback inline por si el JS falla -->
+
+<!-- FALLBACK universal: comprar y presets aunque /assets/ui.js falle -->
 <script>
-  /* Si /assets/ui.js no carga, exponemos un mínimo para login */
-  window.IngresoU = window.IngresoU||{};
-  if(!IngresoU.openBuy){ IngresoU.openBuy=function(){ alert('No se pudo abrir el modal. Recarga la página.'); }; }
+(async function(){
+  /* ========== CONFIG pública (precios/moneda/teléfono) ========== */
+  let CFG = { currency:'PAB', yappy_phone:'+50760000000',
+              prices:{ mensual_cents:999, trimestral_cents:2499, anual_cents:6900 } };
+  try{
+    const r = await fetch('/api/public-config'); const j = await r.json();
+    if(j && j.ok){ CFG = j; }
+  }catch(_){ /* fallback */ }
+
+  const phone = (CFG.yappy_phone || '+50760000000').replace(/[^\d]/g,'');
+  const p = CFG.prices||{};
+  const fmt = (c)=> (c/100).toLocaleString('es-PA',{style:'currency',currency:CFG.currency||'PAB'});
+
+  // Render de precios (por si ui.js no llegó a hacerlo)
+  const m=document.getElementById('price-mensual'); if(m) m.textContent=fmt(p.mensual_cents||0);
+  const t=document.getElementById('price-trimestral'); if(t) t.textContent=fmt(p.trimestral_cents||0);
+  const a=document.getElementById('price-anual'); if(a) a.textContent=fmt(p.anual_cents||0);
+
+  /* ========== LOGIN inline (independiente de ui.js) ========== */
+  async function quickLogin(e){
+    e.preventDefault?.();
+    const email=(document.getElementById('login-email')?.value||'').trim().toLowerCase();
+    const code =(document.getElementById('login-code')?.value||'').trim().toUpperCase();
+    const out=document.getElementById('login-out');
+    const say=(m,bad=false)=>{ if(out){ out.textContent=m; out.className='inline-note '+(bad?'bad':'good'); } };
+
+    if(!email||!code) return say('Completa correo y KEY.',true);
+
+    try{
+      const send = async (url, body) => {
+        const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        return r.json();
+      };
+      let r = await send('/api/get-subscription',{ email, code });
+      if(!r.ok && r.error==='NOT_REDEEMED'){
+        const rr=await send('/api/redeem-key',{ email, code });
+        if(rr.ok){ r = await send('/api/get-subscription',{ email, code }); }
+      }
+      if(r.ok && r.subscription){
+        const s=r.subscription;
+        localStorage.setItem('ingresou_email', email);
+        localStorage.setItem('ingresou_key', code);
+        localStorage.setItem('ingresou_plan', s.plan||'mensual');
+        localStorage.setItem('ingresou_university', s.university||'');
+        localStorage.setItem('ingresou_expires_at', s.expires_at||'');
+        say('¡Listo! Redirigiendo…');
+        const next=new URLSearchParams(location.search).get('next');
+        setTimeout(()=> location.href= next || '/premium.html', 300);
+      } else {
+        say(r?.error||'Error de acceso', true);
+      }
+    }catch(err){
+      say('No se pudo conectar. Intenta de nuevo.', true);
+    }
+  }
+  const f=document.getElementById('login-form');
+  if(f){ f.addEventListener('submit', quickLogin); }
+
+  /* ========== BUY universal: con ui.js (modal) o directo a WhatsApp ========== */
+  function waLink(plan){
+    const cents = plan==='anual' ? p.anual_cents : plan==='trimestral' ? p.trimestral_cents : p.mensual_cents;
+    const amount = fmt(cents||0);
+    const email=(localStorage.getItem('ingresou_email')||'').toLowerCase();
+    const msg = encodeURIComponent(`Hola, quiero comprar el plan ${plan.toUpperCase()} (${amount}) para IngresoU. Mi correo: ${email||'(escribe tu correo aquí)'}`);
+    return `https://wa.me/${phone}?text=${msg}`;
+  }
+  document.querySelectorAll('[data-buy]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const plan = el.getAttribute('data-buy');
+      if(window.IngresoU && IngresoU.openBuy){
+        IngresoU.openBuy(plan); // Modal bonito
+      } else {
+        window.open(waLink(plan), '_blank'); // Fallback directo
+      }
+    });
+  });
+
+  /* ========== PRESETS universal: si no hay sesión, scrollea al login ========== */
+  function haveSession(){ return !!(localStorage.getItem('ingresou_email') && localStorage.getItem('ingresou_key')); }
+  function scrollToLogin(){ const form=document.getElementById('login-form'); if(form){ form.scrollIntoView({behavior:'smooth',block:'start'}); const c=document.getElementById('login-code'); c&&c.focus(); } }
+  document.querySelectorAll('[data-preset]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const mode=btn.getAttribute('data-preset');
+      if(haveSession()){ location.href=`/exam.html?mode=${encodeURIComponent(mode)}`; }
+      else { scrollToLogin(); }
+    });
+  });
+
+})();
 </script>
 </body>
 </html>
+
