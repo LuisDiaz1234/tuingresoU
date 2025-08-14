@@ -1,64 +1,84 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>IngresoU</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:900px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-    .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0}
-    .muted{color:#475569}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left}
-    nav a{margin-right:12px}
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Ranking — IngresoU</title>
+  <link rel="stylesheet" href="/assets/styles.css"/>
 </head>
 <body>
-<header>
-  <h1>IngresoU</h1>
-  <nav>
-    <a href="/index.html">Inicio</a>
-    <a href="/premium.html">Premium</a>
-    <a href="/leaderboard.html">Ranking</a>
-  </nav>
+<header class="header">
+  <div class="container row">
+    <div class="brand">IngresoU</div>
+    <nav class="nav">
+      <a href="/index.html">Inicio</a>
+      <a href="/premium.html">Premium</a>
+      <a class="active" href="/leaderboard.html">Ranking</a>
+      <a href="/exam.html">Examen</a>
+    </nav>
+  </div>
 </header>
 
-<div class="card">
-  <h2>Ranking Global</h2>
-  <p class="muted">Top 50 por puntaje (empates por menor duración).</p>
-  <div id="tableWrap" class="muted">Cargando...</div>
-</div>
+<main class="container">
+  <section class="section">
+    <div class="card pad">
+      <div class="sec-head">
+        <h2>Ranking nacional</h2>
+        <span class="pill">Top 50 — mayor puntaje y menor tiempo</span>
+      </div>
+      <div id="lb-wrap" class="sec">
+        <div class="inline-note">Cargando ranking…</div>
+      </div>
+    </div>
+
+    <div class="card pad" style="margin-top:16px;">
+      <div class="sec-head">
+        <h3>Consejo</h3>
+        <span class="pill">Tu racha y XP te ayudan a subir</span>
+      </div>
+      <p class="p">Tu cuenta guarda <b>racha</b> y <b>XP</b>. No compartas tu cuenta: podría <u>romper tu racha</u> y afectar tu progreso y ranking.</p>
+      <div class="row" style="gap:10px;">
+        <a class="btn" href="/practice-algebra.html">Practicar Álgebra</a>
+        <a class="btn" href="/exam.html?mode=paa">Hacer simulacro PAA</a>
+      </div>
+    </div>
+  </section>
+</main>
 
 <script>
-const TZ_OPTS = { timeZone: 'America/Panama', hour12: false };
-(async () => {
+async function loadLB(){
+  const el = document.getElementById('lb-wrap');
   try{
-    const res = await fetch('/api/leaderboard');
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    if(!data.ok || !Array.isArray(data.items) || data.items.length === 0){
-      document.getElementById('tableWrap').textContent = 'No hay datos aún.';
-      return;
-    }
-    const rows = data.items.map((it, idx)=>{
-      return '<tr>'+
-        '<td>'+(idx+1)+'</td>'+
-        '<td>'+it.email+'</td>'+
-        '<td>'+it.topic+'</td>'+
-        '<td><strong>'+it.score+'</strong></td>'+
-        '<td>'+it.duration+'s</td>'+
-        '<td>'+(it.university||'-')+'</td>'+
-        '<td>'+new Date(it.created_at).toLocaleString('es-PA', TZ_OPTS)+'</td>'+
-      '</tr>';
-    }).join('');
-    const html = '<table><thead><tr><th>#</th><th>Email</th><th>Tema</th><th>Puntaje</th><th>Duración</th><th>Univ.</th><th>Fecha (PA)</th></tr></thead><tbody>'+rows+'</tbody></table>';
-    document.getElementById('tableWrap').innerHTML = html;
+    const r = await fetch('/api/leaderboard');
+    const j = await r.json();
+    if(!j.ok){ el.innerHTML = '<div class="inline-note bad">No hay datos por ahora.</div>'; return; }
+    const rows = j.items||[];
+    if(!rows.length){ el.innerHTML = '<div class="inline-note">Aún no hay puntajes. ¡Sé el primero!</div>'; return; }
+
+    const me = (localStorage.getItem('ingresou_email')||'').toLowerCase();
+    let html = `<div class="table-wrap"><table class="table">
+      <thead><tr><th>#</th><th>Email</th><th>Tema</th><th>Puntaje</th><th>Tiempo</th><th>Fecha</th></tr></thead><tbody>`;
+    rows.forEach((r,i)=>{
+      const meRow = me && r.email.toLowerCase()===me ? ' style="background:rgba(59,178,246,.08)"' : '';
+      html += `<tr${meRow}>
+        <td>${i+1}</td>
+        <td>${r.email.replace(/(.{2}).+(@)/,'$1***$2')}</td>
+        <td>${r.topic}</td>
+        <td><b>${r.score}</b></td>
+        <td>${Math.round((r.duration||0)/60)}m</td>
+        <td>${(r.created_at||'').slice(0,10)}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
   }catch(e){
-    document.getElementById('tableWrap').textContent = 'No hay datos o el endpoint no responde.';
+    el.innerHTML = '<div class="inline-note bad">Error cargando ranking.</div>';
   }
-})();
+}
+document.addEventListener('DOMContentLoaded', loadLB);
 </script>
+
+<script src="/assets/onboarding.js"></script>
 </body>
 </html>
 
