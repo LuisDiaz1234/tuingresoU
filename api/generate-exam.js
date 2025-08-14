@@ -1,104 +1,103 @@
-// /api/generate-exam.js — Presets oficiales (DB-only) + personalizado
-import { cors, parseBody, getClient } from './_lib/supaClient.js';
+// /api/generate-exam.js
+import { createClient } from '@supabase/supabase-js';
 
-function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
-async function takeFromDB({ exam=null, subject=null, topic=null, count=10 }){
-  const supa = getClient();
-  let q = supa.from('questions')
-    .select('id,prompt,choices,answer_index,explanation,topic,exam,subject,active')
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
+const supa = (SUPABASE_URL && SUPABASE_SERVICE_ROLE)
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE)
+  : null;
+
+const MAP = {
+  paa: ['lectura','algebra','logico'],
+  pca: ['espanol','matematicas'], // ojo: en DB puedes tener 'espanol' como 'lectura'; se normaliza abajo
+  pcg: ['biologia','quimica','fisica','matematicas']
+};
+
+function norm(t){
+  t = (t||'').toLowerCase();
+  if (t==='espanol' || t==='español') return 'lectura';
+  if (t==='logico'||t==='razonamiento') return 'logico';
+  if (t==='matemáticas'||t==='matematicas'||t==='algebra') return 'algebra';
+  return t;
+}
+
+function timeByMode(m){ return (m==='paa')?120*60 : (m==='pca')?120*60 : (m==='pcg')?120*60 : 60*60; }
+function sectionsByMode(m){ return (m==='pcg')?4 : (m==='paa'||m==='pca')?2 : 1; }
+
+async function fetchFromDB(topic, n){
+  if (!supa) return [];
+  const { data, error } = await supa
+    .from('questions')
+    .select('prompt,choices,answer_index,explanation,topic,active')
     .eq('active', true)
-    .limit(500);
-  if(exam) q = q.eq('exam', exam);
-  if(subject) q = q.eq('subject', subject);
-  if(topic) q = q.eq('topic', topic);
+    .eq('topic', topic)
+    .limit(n*2);
+  if (error || !data?.length) return [];
+  // barajar y cortar
+  for (let i=data.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [data[i],data[j]]=[data[j],data[i]]; }
+  return data.slice(0,n).map(r=>({
+    prompt:r.prompt,
+    choices: Array.isArray(r.choices)? r.choices : r.choices?.options || r.choices,
+    answer_index:r.answer_index,
+    explanation:r.explanation||'',
+    topic:topic
+  }));
+}
 
-  const { data, error } = await q;
-  if(error) throw new Error(error.message);
-  const pool = Array.isArray(data)? data : [];
-  // shuffle simple
-  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-  return pool.slice(0, count);
+// importamos localmente el generador de preguntas (misma lógica que /api/generate-questions)
+async function localGen(topic, count, difficulty, seed){
+  const r = await fetch(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/api/generate-questions` : 'http://localhost:3000/api/generate-questions', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ topic, count, difficulty, seed })
+  }).then(r=>r.json()).catch(()=>[]);
+  return Array.isArray(r)? r : [];
 }
 
 export default async function handler(req,res){
-  cors(res);
-  if(req.method==='OPTIONS'){ res.status(200).end(); return; }
-  if(req.method!=='POST'){ res.status(405).json({ok:false,error:'METHOD_NOT_ALLOWED'}); return; }
-
   try{
-    const b = await parseBody(req);
-    const mode = (b.mode||'').toString().trim();       // 'paa' | 'pca' | 'pcg' | ''
-    const source = (b.source||'').toString().trim();   // 'db_only' para presets
-    const countPerSection = clamp(parseInt(b.count_per_section||10,10)||10, 5, 30);
-    const difficulty = (b.difficulty||'medium').toString().trim();
-    const variant = Number.isInteger(b.variant)? b.variant : null;
-    const timeLimit = b.time_limit_seconds || 30*60;
+    if (req.method!=='POST') return res.status(405).json({ok:false,error:'METHOD'});
+    const { mode='paa', difficulty='medium', count_per_section=10, variant=Date.now()%1e6 } = req.body||{};
+    const m = (mode||'paa').toLowerCase();
+    const topics = (MAP[m]||['algebra']).map(norm);
+    const sections = sectionsByMode(m);
+    const perSec = Math.max(5, Math.min(100, Number(count_per_section)||10));
+    const seed = Number(variant)||0;
 
-    let sections = [];
-    let examName = 'Personalizado';
-    let totalTime = timeLimit;
+    const outSections = [];
+    for (let s=0; s<sections; s++){
+      // reparto simple entre tópicos
+      const title =
+        (m==='paa') ? (s===0?'Lectura':'Matemáticas y Lógico') :
+        (m==='pca') ? (s===0?'Español':'Matemáticas') :
+        `Sección ${s+1}`;
 
-    if(mode==='paa' && source==='db_only'){
-      // PAA: 2 secciones (60+60)
-      examName = 'PAA';
-      totalTime = 120*60;
-      const sec1 = await takeFromDB({ exam:'PAA', subject:'lectura', count: 30 });
-      const sec2 = await takeFromDB({ exam:'PAA', subject:'matematicas', count: 30 });
-      if(sec1.length<5 || sec2.length<5) return res.status(200).json({ok:false,error:'Banco PAA insuficiente'});
-      sections.push({ topic:'lectura', title:'Comprensión Lectora', items: sec1 });
-      sections.push({ topic:'matematicas', title:'Matemáticas', items: sec2 });
-    }
-    else if(mode==='pca' && source==='db_only'){
-      // PCA: 2 secciones (120 min total)
-      examName = 'PCA';
-      totalTime = 120*60;
-      const sec1 = await takeFromDB({ exam:'PCA', subject:'espanol', count: 50 });
-      const sec2 = await takeFromDB({ exam:'PCA', subject:'matematicas', count: 50 });
-      if(sec1.length<5 || sec2.length<5) return res.status(200).json({ok:false,error:'Banco PCA insuficiente'});
-      sections.push({ topic:'espanol', title:'Español', items: sec1 });
-      sections.push({ topic:'matematicas', title:'Matemáticas', items: sec2 });
-    }
-    else if(mode==='pcg' && source==='db_only'){
-      // PCG: 4 secciones (120 min total)
-      examName = 'PCG';
-      totalTime = 120*60;
-      const s1 = await takeFromDB({ exam:'PCG', subject:'biologia', count: 25 });
-      const s2 = await takeFromDB({ exam:'PCG', subject:'quimica', count: 25 });
-      const s3 = await takeFromDB({ exam:'PCG', subject:'fisica', count: 25 });
-      const s4 = await takeFromDB({ exam:'PCG', subject:'matematicas', count: 25 });
-      if(s1.length<5||s2.length<5||s3.length<5||s4.length<5) return res.status(200).json({ok:false,error:'Banco PCG insuficiente'});
-      sections.push({ topic:'biologia', title:'Biología', items:s1 });
-      sections.push({ topic:'quimica', title:'Química', items:s2 });
-      sections.push({ topic:'fisica', title:'Física', items:s3 });
-      sections.push({ topic:'matematicas', title:'Matemáticas', items:s4 });
-    }
-    else {
-      // Personalizado genérico (usa topic existentes)
-      const algebra = await takeFromDB({ topic:'algebra', count: countPerSection });
-      const logico  = await takeFromDB({ topic:'logico', count: countPerSection });
-      const lectura = await takeFromDB({ topic:'lectura', count: countPerSection });
-      if(algebra.length<3 && logico.length<3 && lectura.length<3){
-        return res.status(200).json({ok:false,error:'Banco general insuficiente'});
+      const qs = [];
+      const each = Math.max(1, Math.round(perSec / topics.length));
+      for (const t of topics){
+        let chunk = await fetchFromDB(t, each);
+        if (chunk.length < each){
+          const faltan = each - chunk.length;
+          const gen = await localGen(t, faltan, difficulty, seed + s);
+          chunk = chunk.concat(gen);
+        }
+        qs.push(...chunk.slice(0, each));
       }
-      examName = 'Personalizado';
-      totalTime = timeLimit;
-      if(algebra.length) sections.push({topic:'algebra', title:'Álgebra', items:algebra});
-      if(logico.length)  sections.push({topic:'logico',  title:'Razonamiento Lógico', items:logico});
-      if(lectura.length) sections.push({topic:'lectura', title:'Comprensión Lectora', items:lectura});
+      while (qs.length < perSec){
+        // relleno final si aún falta
+        const gen = await localGen('algebra', 1, difficulty, seed+s+qs.length);
+        qs.push(...gen);
+      }
+      outSections.push({ title, questions: qs.slice(0, perSec) });
     }
 
-    const totalQ = sections.reduce((s,x)=>s+x.items.length,0);
-    const exam = {
-      version: 3,
-      name: examName,
-      variant: variant ?? Math.floor(Date.now()/60000),
-      difficulty,
-      sections,
-      total_questions: totalQ,
-      time_limit_seconds: totalTime
-    };
-    res.status(200).json({ ok:true, exam });
+    return res.status(200).json({
+      ok:true,
+      mode:m,
+      duration: timeByMode(m),
+      seed,
+      sections: outSections
+    });
   }catch(e){
-    res.status(200).json({ ok:false, error: e.message || 'SERVER_ERROR' });
+    return res.status(200).json({ ok:false, sections:[] });
   }
 }
