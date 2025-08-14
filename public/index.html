@@ -237,6 +237,63 @@
 
 })();
 </script>
+  <script>
+/* ==== FALLBACK DEFINITIVO PARA COMPRAR (funciona sí o sí) ==== */
+(function(){
+  // Fallbacks hardcodeados por si /api/public-config o ui.js fallan
+  const DEF_PHONE   = '+50760000000';
+  const DEF_CURR    = 'PAB';
+  const DEF_PRICES  = { mensual_cents: 999, trimestral_cents: 2499, anual_cents: 6900 };
+
+  // Helper: formatea B/. a partir de cents
+  function money(cents, curr){
+    return (Number(cents||0)/100).toLocaleString('es-PA',{ style:'currency', currency: curr || DEF_CURR });
+  }
+  // Helper: construye link de WhatsApp
+  function buildWA(plan, curr, prices, phone){
+    const cents = plan === 'anual' ? (prices.anual_cents||0)
+                : plan === 'trimestral' ? (prices.trimestral_cents||0)
+                : (prices.mensual_cents||0);
+    const amount = money(cents, curr);
+    const email  = (localStorage.getItem('ingresou_email')||'').toLowerCase();
+    const msg = encodeURIComponent(
+      `Hola, quiero comprar el plan ${plan.toUpperCase()} (${amount}) para IngresoU. `+
+      `Mi correo: ${email || '(escribe tu correo aquí)'}`
+    );
+    const cleanPhone = (phone||DEF_PHONE).replace(/[^\d]/g,'');
+    return `https://wa.me/${cleanPhone}?text=${msg}`;
+  }
+
+  // Leemos config pública si está disponible (no bloquea si falla)
+  let CFG = { currency: DEF_CURR, yappy_phone: DEF_PHONE, prices: DEF_PRICES };
+  (async ()=>{
+    try{
+      const r = await fetch('/api/public-config', {cache:'no-store'});
+      const j = await r.json();
+      if (j && j.ok) CFG = j;
+    } catch(_) { /* seguimos con defaults */ }
+  })();
+
+  // DELEGACIÓN DE EVENTOS: captura clicks en cualquier [data-buy]
+  document.addEventListener('click', function(ev){
+    const tgt = ev.target.closest('[data-buy]');
+    if(!tgt) return;
+
+    ev.preventDefault();
+    const plan = tgt.getAttribute('data-buy') || 'mensual';
+
+    // Si ui.js cargó y expuso modal → úsalo
+    if (window.IngresoU && typeof IngresoU.openBuy === 'function') {
+      IngresoU.openBuy(plan);
+      return;
+    }
+    // Fallback garantizado → ir directo a WhatsApp en la MISMA pestaña (sin bloqueos)
+    const url = buildWA(plan, CFG.currency, CFG.prices||DEF_PRICES, CFG.yappy_phone);
+    window.location.href = url;
+  }, {capture:true});
+})();
+</script>
+
 </body>
 </html>
 
